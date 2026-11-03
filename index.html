@@ -131,6 +131,21 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .sheet ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; font-size: 1.02rem; font-weight: 500; }
 .sheet li { display: flex; gap: 12px; align-items: center; }
 .sheet li b { width: 28px; height: 28px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: .85rem; color: var(--white); }
+.bar-right { display: flex; gap: 8px; }
+.icon-btn svg { width: 20px; height: 20px; }
+.muted { margin: -8px 0 0; font-size: .98rem; color: #6B5E58; }
+.miclist { display: grid; gap: 8px; }
+.micopt { display: grid; gap: 8px; text-align: left; padding: 14px 16px; border-radius: 16px; background: #F3EFEC; color: var(--ink); font-weight: 600; font-size: 1rem; }
+.micopt[aria-pressed="true"] { background: var(--ink); color: var(--white); }
+.micopt small { font-weight: 500; opacity: .65; font-size: .82rem; }
+.meter { height: 8px; border-radius: 99px; background: color-mix(in srgb, currentColor 18%, transparent); overflow: hidden; }
+.meter i { display: block; height: 100%; width: 0; background: var(--tomato); border-radius: 99px; transition: width .08s linear; }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 600; font-size: .98rem; padding: 4px 2px; }
+.switch input { appearance: none; -webkit-appearance: none; margin: 0; flex: none; width: 50px; height: 30px; border-radius: 99px; background: #E4DEDA; position: relative; cursor: pointer; transition: background .2s; }
+.switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: var(--white); box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .2s; }
+.switch input:checked { background: var(--ink); }
+.switch input:checked::after { transform: translateX(20px); }
+.switch input:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 .sheet .ok { height: 54px; border-radius: 99px; background: var(--ink); color: var(--white); font-weight: 700; font-size: 1.02rem; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -150,7 +165,10 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 <div class="app idle" id="app">
   <header class="bar">
     <div class="dots" id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-    <button class="icon-btn" id="help" type="button" aria-label="Como se joga">?</button>
+    <div class="bar-right">
+      <button class="icon-btn" id="mic" type="button" aria-label="Escolher microfone"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button class="icon-btn" id="help" type="button" aria-label="Como se joga">?</button>
+    </div>
   </header>
 
   <main class="stage" aria-live="polite">
@@ -181,6 +199,16 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 </div>
 
 <div class="toast" id="toast" role="status" hidden></div>
+
+<div class="sheet-wrap" id="micsheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mic-title">
+    <h2 id="mic-title">Microfone</h2>
+    <p class="muted">Escolhe um e fala. A barra tem de mexer.</p>
+    <div class="miclist" id="miclist"></div>
+    <label class="switch" for="mic-call">Modo chamada<input type="checkbox" id="mic-call"></label>
+    <button class="ok" id="mic-ok" type="button">Feito</button>
+  </div>
+</div>
 
 <div class="sheet-wrap" id="sheet" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
@@ -262,7 +290,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     for (let ch = 0; ch < buf.numberOfChannels; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) out[i] += d[i] / buf.numberOfChannels; }
     let peak = 0; for (let i = 0; i < len; i++) { const a = Math.abs(out[i]); if (a > peak) peak = a; }
     if (peak > 0.001) { const g = 0.95 / peak; for (let i = 0; i < len; i++) out[i] *= g; }
-    return { data: out, rate: buf.sampleRate };
+    return { data: out, rate: buf.sampleRate, peak };
   }
   function reversed(c) { const n = c.data.length, r = new Float32Array(n); for (let i = 0; i < n; i++) r[i] = c.data[n - 1 - i]; return { data: r, rate: c.rate }; }
 
@@ -341,8 +369,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     if (rec) { if (rec.mr.state === "recording") rec.mr.stop(); return; }
     stopPlay(); audio(); buzz(12);
     let stream;
-    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } }); }
-    catch (e) { micOK = false; render(); toast("Não tenho acesso ao microfone. Permite-o nas definições do browser, ou Toca outra vez para escolher um ficheiro de áudio.", 6000); return; }
+    try { stream = await openMic(); }
+    catch (e) { micOK = false; render(); toast("Não tenho acesso ao microfone. Permite-o nas definições do browser, ou toca outra vez para escolher um ficheiro de áudio.", 6000); return; }
     let mr;
     try { mr = new MediaRecorder(stream); } catch (e) { stream.getTracks().forEach((t) => t.stop()); micOK = false; render(); return; }
     try { analyser.disconnect(); } catch (e) {}
@@ -374,6 +402,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     try {
       const clip = toMono(await decode(await blob.arrayBuffer()));
       if (clip.data.length < clip.rate * 0.3) throw new Error("short");
+      if (blob instanceof Blob && !(blob instanceof File) && clip.peak < 0.02) {
+        render(); toast("Não ouvi nada. Experimenta outro microfone.", 5000); openMicSheet(); return;
+      }
       buzz(20);
       if (slot === "orig") {
         S.orig = clip; S.origrev = reversed(clip); S.imit = S.result = null; S.score = null;
@@ -495,10 +526,105 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   }
 
   /* ---------- ajuda ---------- */
+  /* ---------- escolha do microfone ---------- */
+  const store = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+  let micId = store.get("cac-mic") || "";
+  let callMode = store.get("cac-call") === "1";
+  $("mic-call").checked = callMode;
+  function constraints(id) {
+    const a = { echoCancellation: callMode, noiseSuppression: callMode, autoGainControl: true };
+    if (id) a.deviceId = { exact: id };
+    return { audio: a };
+  }
+  async function openMic(id) {
+    const want = id === undefined ? micId : id;
+    try { return await navigator.mediaDevices.getUserMedia(constraints(want)); }
+    catch (e) {
+      if (want && (e.name === "OverconstrainedError" || e.name === "NotFoundError" || e.name === "NotReadableError")) {
+        micId = ""; store.set("cac-mic", "");
+        return navigator.mediaDevices.getUserMedia(constraints(""));
+      }
+      throw e;
+    }
+  }
+  const NAMES = { "speakerphone": "Alta voz", "headset earpiece": "Auricular", "default": "Automático" };
+  function niceName(d, i) {
+    if (!d.deviceId) return ["Automático", ""];
+    const l = (d.label || "").trim(), k = l.toLowerCase();
+    for (const key in NAMES) if (k === key || k.startsWith(key)) return [NAMES[key], l];
+    return [l || "Microfone " + (i + 1), ""];
+  }
+  let test = null;
+  function stopTest() {
+    if (!test) return;
+    cancelAnimationFrame(test.raf);
+    test.stream.getTracks().forEach((t) => t.stop());
+    try { test.node.disconnect(); } catch (e) {}
+    test = null;
+  }
+  async function startTest(id) {
+    stopTest();
+    let stream;
+    try { stream = await openMic(id); } catch (e) { return false; }
+    const c = audio(), node = c.createMediaStreamSource(stream), an = c.createAnalyser();
+    an.fftSize = 1024; node.connect(an);
+    const buf = new Float32Array(an.fftSize);
+    test = { stream, node, raf: 0 };
+    const t = test;
+    const tick = () => {
+      if (test !== t) return;
+      an.getFloatTimeDomainData(buf);
+      let s = 0; for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
+      const v = Math.min(1, Math.sqrt(s / buf.length) * 6);
+      const bar = document.querySelector('.micopt[aria-pressed="true"] .meter i');
+      if (bar) bar.style.width = Math.round(v * 100) + "%";
+      t.raf = requestAnimationFrame(tick);
+    };
+    tick();
+    return true;
+  }
+  async function openMicSheet() {
+    if (rec) return;
+    stopPlay();
+    $("micsheet").hidden = false;
+    const list = $("miclist");
+    list.textContent = "";
+    if (!(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices)) { list.textContent = "Este browser não deixa escolher o microfone."; return; }
+    const ok = await startTest(micId);
+    if (!ok) { list.textContent = "Não tenho acesso ao microfone. Permite-o nas definições do browser."; return; }
+    const devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audioinput");
+    const seen = new Set();
+    const opts = [{ deviceId: "", label: "default" }].concat(devs.filter((d) => d.deviceId && d.deviceId !== "default" && d.deviceId !== "communications"));
+    opts.forEach((d, i) => {
+      if (seen.has(d.deviceId)) return; seen.add(d.deviceId);
+      const [name, sub] = niceName(d, i);
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "micopt";
+      b.setAttribute("aria-pressed", String(d.deviceId === micId));
+      const top = document.createElement("span"); top.textContent = name;
+      if (sub && sub !== name) { const sm = document.createElement("small"); sm.textContent = " · " + sub; top.append(sm); }
+      const m = document.createElement("span"); m.className = "meter"; m.innerHTML = "<i></i>";
+      b.append(top, m);
+      b.addEventListener("click", async () => {
+        micId = d.deviceId; store.set("cac-mic", micId);
+        list.querySelectorAll(".micopt").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+        buzz(); await startTest(micId);
+      });
+      list.append(b);
+    });
+    if (!list.querySelector('[aria-pressed="true"]') && list.firstChild) list.firstChild.setAttribute("aria-pressed", "true");
+  }
+  function closeMicSheet() { stopTest(); $("micsheet").hidden = true; }
+  $("mic").addEventListener("click", openMicSheet);
+  $("mic-ok").addEventListener("click", closeMicSheet);
+  $("micsheet").addEventListener("click", (e) => { if (e.target === $("micsheet")) closeMicSheet(); });
+  $("mic-call").addEventListener("change", (e) => { callMode = e.target.checked; store.set("cac-call", callMode ? "1" : "0"); if (test) startTest(micId); });
+  $("mic").hidden = !micOK;
+
   $("help").addEventListener("click", () => { $("sheet").hidden = false; $("sheet-ok").focus(); });
   $("sheet-ok").addEventListener("click", () => { $("sheet").hidden = true; });
   $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sheet").hidden = true; });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("sheet").hidden = true; });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("sheet").hidden = true; if (!$("micsheet").hidden) closeMicSheet(); } });
   window.addEventListener("resize", drawRing);
 
   /* ---------- pontuação: semelhança espectral + DTW ---------- */
