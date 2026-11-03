@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Canta ao Contrário</string>
+    <string name="title_activity_main">Canta ao Contrário</string>
+    <string name="package_name">io.github.tomasmota77.contrario</string>
+    <string name="custom_url_scheme">io.github.tomasmota77.contrario</string>
+</resources>
