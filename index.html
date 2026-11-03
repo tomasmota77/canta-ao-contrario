@@ -3,17 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#FF5B2E">
+<meta name="theme-color" content="#170A05">
+<meta name="description" content="Ouve ao contrário, imita e adivinha. Um jogo de festa para cantar ao contrário com amigos.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Contrário">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23FF5B2E'/%3E%3Ccircle cx='50' cy='50' r='26' fill='white'/%3E%3Ccircle cx='50' cy='50' r='10' fill='%23FF5B2E'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="icons/favicon-48.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box;height:100%}</style>
 <title>Canta ao Contrário</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500;800&family=Funnel+Sans:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="preload" href="fonts/funnel-display-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 /* Layout: um ecrã por fase, cor inteira. Frase grande em cima, um botão central que reage ao som, dois botões pequenos ao lado. Visual único por fase (não segue o tema claro/escuro, de propósito). */
 :root {
@@ -82,6 +84,16 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 }
 .pill svg { width: 18px; height: 18px; }
 .pill:active { transform: scale(.96); }
+.pill[aria-pressed="true"], .pill.strong { background: var(--fg); color: var(--bg); }
+.stage-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+.phrase.pulse { animation: pulse .5s ease-in-out infinite alternate; }
+@keyframes pulse { to { opacity: .35; transform: scale(.96); } }
+.rank { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; max-height: 38vh; overflow: auto; }
+.rank li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-radius: 16px; background: color-mix(in srgb, var(--fg) 9%, transparent); font-weight: 600; font-size: 1.05rem; }
+.rank li.top { background: var(--fg); color: var(--bg); }
+.rank .rk-name { display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rank .rk-name i { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.rank b { font-family: var(--display); font-weight: 800; font-size: 1.4rem; font-variant-numeric: tabular-nums; }
 
 .score { display: flex; flex-direction: column; gap: 6px; }
 .score-num { font-family: var(--display); font-weight: 800; font-size: clamp(8rem, 46vw, 12rem); line-height: .8; letter-spacing: -.06em; font-variant-numeric: tabular-nums; }
@@ -148,6 +160,40 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .sheet .row > * { flex: 1; }
 .sheet .ghost { height: 54px; border-radius: 99px; background: #F3EFEC; color: var(--ink); font-weight: 700; font-size: 1.02rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
 .sheet .ghost svg { width: 18px; height: 18px; }
+.sheet .ok:disabled { opacity: .35; }
+.privacy-link { align-self: center; color: #6B5E58; font-size: .9rem; font-weight: 500; }
+.intro-icon { width: 64px; height: 64px; border-radius: 22px; background: var(--tomato); color: var(--ink); display: grid; place-items: center; }
+.intro-icon svg { width: 30px; height: 30px; }
+.share-preview { display: flex; justify-content: center; }
+.share-preview canvas { height: min(44vh, 420px); width: auto; aspect-ratio: 9 / 16; max-width: 100%; border-radius: 18px; background: var(--ink); }
+#share-status { margin: 0; text-align: center; min-height: 1.4em; }
+#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 60; }
+
+/* preparação do modo Adivinha */
+.setup {
+  height: 100%; max-width: 480px; margin: 0 auto;
+  display: grid; grid-template-rows: auto 1fr auto; gap: 16px;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 24px;
+}
+.setup-body { min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 4px 2px; }
+.setup-title { margin: 8px 0 6px; font-family: var(--display); font-weight: 800; font-size: clamp(2.4rem, 12vw, 3.2rem); line-height: .95; letter-spacing: -.04em; }
+.players { display: grid; gap: 10px; }
+.player-row { display: flex; align-items: center; gap: 12px; height: 60px; padding: 0 6px 0 18px; border-radius: 18px; background: rgba(255,255,255,.08); }
+.player-row:focus-within { box-shadow: 0 0 0 2px rgba(255,255,255,.7); }
+.pdot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.player-row input { flex: 1; min-width: 0; height: 100%; background: transparent; border: 0; outline: none; color: var(--white); font: 600 1.15rem var(--ui); }
+.player-row input::placeholder { color: rgba(255,255,255,.4); }
+.player-row .x { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: rgba(255,255,255,.55); flex: none; }
+.player-row .x svg { width: 20px; height: 20px; }
+.add-player { height: 56px; border-radius: 18px; border: 2px dashed rgba(255,255,255,.25); color: rgba(255,255,255,.85); font-weight: 600; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.add-player svg { width: 18px; height: 18px; }
+.rounds { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; font-weight: 600; }
+.rseg { display: flex; padding: 4px; border-radius: 99px; background: rgba(255,255,255,.1); }
+.rseg button { width: 46px; height: 40px; border-radius: 99px; font-weight: 700; font-size: 1.02rem; }
+.rseg button[aria-pressed="true"] { background: var(--white); color: var(--ink); }
+.x:focus-visible, .add-player:focus-visible, .rseg button:focus-visible { outline: 3px solid var(--white); outline-offset: 2px; }
 
 /* início */
 .home {
@@ -205,6 +251,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .sheet .ok { height: 54px; border-radius: 99px; background: var(--ink); color: var(--white); font-weight: 700; font-size: 1.02rem; }
 
 @media (prefers-reduced-motion: reduce) {
+  .phrase.pulse { animation: none; }
   .bars i { animation: none; }
   .flipword { transition: none; }
   body, .dots i, .big { transition: none; }
@@ -233,6 +280,17 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   </div>
 </div>
 
+<div class="setup" id="setup" hidden>
+  <div class="bar"><button class="icon-btn" id="setup-back" type="button" aria-label="Voltar ao início" data-i18n-aria="back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span></span><span></span></div>
+  <div class="setup-body">
+    <h1 class="setup-title" data-i18n="whoPlays">Quem joga?</h1>
+    <div class="players" id="players"></div>
+    <button class="add-player" id="add-player" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg><span data-i18n="addPlayer">Adicionar jogador</span></button>
+    <div class="rounds"><span data-i18n="roundsEach">Rondas por pessoa</span><div class="rseg" id="rounds-seg" role="group"><button type="button" data-r="1">1</button><button type="button" data-r="2">2</button><button type="button" data-r="3">3</button></div></div>
+  </div>
+  <button class="cta-main" id="setup-go" type="button"><span data-i18n="start">Começar</span></button>
+</div>
+
 <div class="app idle" id="app" hidden>
   <header class="bar">
     <button class="icon-btn" id="home-btn" type="button" aria-label="Voltar ao início" data-i18n-aria="back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -252,11 +310,14 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3.5c2 0 3.2 1 4.3 2.7l1.4 2.2C14.4 13.8 15.6 15 17.6 15H20M4 15h3.5c1.2 0 2.1-.4 2.9-1.1M14.5 8.1c.8-.7 1.7-1.1 3-1.1H20M17.5 4.5 20 7l-2.5 2.5M17.5 12.5 20 15l-2.5 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span data-i18n="shuffle">Outra frase</span>
     </button>
+    <button class="pill" id="speed" type="button" hidden aria-pressed="false" data-i18n-aria="speedAria" aria-label="Velocidade"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 15.5c0-4 3-7 7-7s7 3 7 7z" fill="currentColor"/><circle cx="19.5" cy="13" r="2.2" fill="currentColor"/><path d="M5.5 15.5v2.5M15.5 15.5v2.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg><span id="speed-label">1×</span></button>
+    <ol class="rank" id="rank" hidden></ol>
     <div class="score" id="score" hidden>
       <span class="score-num" id="score-num">0</span>
       <span class="verdict" id="verdict"></span>
       <span class="best" id="best"></span>
     </div>
+    <button class="pill strong" id="share-btn" type="button" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3.5M7.5 8 12 3.5 16.5 8M5 12.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-6.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="share">Partilhar</span></button>
   </main>
 
   <div class="controls">
@@ -271,6 +332,28 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 </div>
 
 <div class="toast" id="toast" role="status" hidden></div>
+<canvas id="confetti" aria-hidden="true" hidden></canvas>
+
+<div class="sheet-wrap" id="micintro" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="micintro-title">
+    <div class="intro-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+    <h2 id="micintro-title" data-i18n="micIntroTitle">O jogo precisa do microfone</h2>
+    <p class="muted" data-i18n="micIntroBody">É para te gravar a cantar.</p>
+    <button class="ok" id="micintro-ok" type="button" data-i18n="micIntroOk">Permitir microfone</button>
+  </div>
+</div>
+
+<div class="sheet-wrap" id="sharesheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="share-title">
+    <h2 id="share-title" data-i18n="shareTitle">Partilhar vídeo</h2>
+    <div class="share-preview"><canvas id="share-canvas" width="720" height="1280"></canvas></div>
+    <p class="muted" id="share-status" aria-live="polite"></p>
+    <div class="row">
+      <button class="ghost" id="share-cancel" type="button" data-i18n="cancel">Cancelar</button>
+      <button class="ok" id="share-go" type="button" disabled><span data-i18n="shareNow">Partilhar</span></button>
+    </div>
+  </div>
+</div>
 
 <div class="sheet-wrap" id="langsheet" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="lang-title">
@@ -297,661 +380,14 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
       <button class="ghost" id="mic" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span data-i18n="mic">Microfone</span></button>
       <button class="ok" id="sheet-ok" type="button" data-i18n="go">Bora</button>
     </div>
+    <label class="switch" for="sound-on"><span data-i18n="sounds">Sons</span><input type="checkbox" id="sound-on" checked></label>
+    <a class="privacy-link" id="privacy-link" href="privacy.html" data-i18n="privacy">Privacidade</a>
   </div>
 </div>
 
-<script>
-(() => {
-  "use strict";
-  const $ = (id) => document.getElementById(id);
-  const root = document.documentElement;
-  const MAX_SECONDS = 15;
-
-  /* ---------- línguas ---------- */
-  const I18N = {"pt": {"docTitle": "Canta ao Contrário", "title1": "Canta ao", "title2": "Contrário", "sub": "Ouve ao contrário. Imita. Adivinha.", "playFriends": "Jogar com amigos", "playSolo": "Treinar sozinho", "language": "Idioma", "back": "Voltar ao início", "helpAria": "Como se joga e microfone", "howTo": "Como se joga", "mic": "Microfone", "go": "Bora", "done": "Feito", "micHint": "Escolhe um e fala. A barra tem de mexer.", "callMode": "Modo chamada", "shuffle": "Outra frase", "newPhrase": "Nova frase", "sayThis": "Diz isto", "soundsLike": "Ao contrário soa assim", "nowImitate": "Agora imita", "rec": "Gravar", "stop": "Parar", "listen": "Ouvir", "listenRev": "Ouvir ao contrário", "original": "Original", "imitate": "Imitar", "retry": "Repetir", "resultAria": "Ouvir o resultado", "playingRev": "A tocar ao contrário", "playingOrig": "A tocar o original", "tapRec": "Toca para gravar", "pickAudio": "Escolhe um áudio", "listenAny": "Ouve as vezes que quiseres", "player": "Jogador {n}", "pShort": "J{n}", "secret": "{p} · em segredo", "recAnything": "Grava o que quiseres", "cantHear": "O {p} não pode ouvir", "recorded": "Gravado", "passTo": "Passa o telemóvel ao {p}", "ready": "Estou pronto", "tapReady": "Toca quando estiveres pronto", "rerecord": "Regravar", "listenBack": "Ouve ao contrário", "guessK": "{p}, adivinha", "whatWas": "O que era?", "listenImit": "Ouvir a imitação ao contrário", "imitateAgain": "Imitar outra vez", "reveal": "Revelar", "yourImitRev": "A tua imitação, ao contrário", "sayAloud": "Diz em voz alta e depois revela", "itWas": "Era isto", "gotIt": "Acertou?", "listenOrig": "Ouvir o original", "miss": "Falhou", "hit": "Acertou", "pointFor": "Ponto para o {p}!", "noPoint": "Sem ponto desta vez.", "v5": "Lenda.", "v4": "Quase igual!", "v3": "Nada mau.", "v2": "Quase lá.", "v1": "Outra língua.", "best": "Recorde {n}", "newBest": "Novo recorde", "h_s1": "Grava a frase", "h_s2": "Ouve-a ao contrário", "h_s3": "Imita o que ouviste", "h_s4": "Ouve a tua imitação ao contrário", "h_d1": "Um grava em segredo o que quiser", "h_d2": "O outro ouve isso ao contrário", "h_d3": "E imita o que ouviu", "h_d4": "A imitação toca ao contrário. Adivinha o que era!", "noMic": "Não tenho acesso ao microfone. Permite-o nas definições do browser, ou toca outra vez para escolher um ficheiro de áudio.", "noMic2": "Não tenho acesso ao microfone. Permite-o nas definições do browser.", "heardNothing": "Não ouvi nada. Experimenta outro microfone.", "tooShort": "Ficou muito curto. Grava pelo menos meio segundo.", "cantRead": "Não consegui ler esse som. Tenta outra vez.", "noPicker": "Este browser não deixa escolher o microfone.", "speaker": "Alta voz", "earpiece": "Auricular", "auto": "Automático", "micN": "Microfone {n}"}, "pt-BR": {"docTitle": "Canta ao Contrário", "title1": "Canta ao", "title2": "Contrário", "sub": "Ouça ao contrário. Imite. Adivinhe.", "playFriends": "Jogar com amigos", "playSolo": "Treinar sozinho", "language": "Idioma", "back": "Voltar ao início", "helpAria": "Como jogar e microfone", "howTo": "Como jogar", "mic": "Microfone", "go": "Bora", "done": "Pronto", "micHint": "Escolha um e fale. A barra tem que mexer.", "callMode": "Modo chamada", "shuffle": "Outra frase", "newPhrase": "Nova frase", "sayThis": "Diga isto", "soundsLike": "Ao contrário fica assim", "nowImitate": "Agora imite", "rec": "Gravar", "stop": "Parar", "listen": "Ouvir", "listenRev": "Ouvir ao contrário", "original": "Original", "imitate": "Imitar", "retry": "Repetir", "resultAria": "Ouvir o resultado", "playingRev": "Tocando ao contrário", "playingOrig": "Tocando o original", "tapRec": "Toque para gravar", "pickAudio": "Escolha um áudio", "listenAny": "Ouça quantas vezes quiser", "player": "Jogador {n}", "pShort": "J{n}", "secret": "{p} · em segredo", "recAnything": "Grave o que quiser", "cantHear": "O {p} não pode ouvir", "recorded": "Gravado", "passTo": "Passe o celular para o {p}", "ready": "Estou pronto", "tapReady": "Toque quando estiver pronto", "rerecord": "Regravar", "listenBack": "Ouça ao contrário", "guessK": "{p}, adivinhe", "whatWas": "O que era?", "listenImit": "Ouvir a imitação ao contrário", "imitateAgain": "Imitar de novo", "reveal": "Revelar", "yourImitRev": "Sua imitação, ao contrário", "sayAloud": "Fale em voz alta e depois revele", "itWas": "Era isso", "gotIt": "Acertou?", "listenOrig": "Ouvir o original", "miss": "Errou", "hit": "Acertou", "pointFor": "Ponto para o {p}!", "noPoint": "Ninguém pontua desta vez.", "v5": "Lenda.", "v4": "Quase igual!", "v3": "Nada mal.", "v2": "Quase lá.", "v1": "Outra língua.", "best": "Recorde {n}", "newBest": "Novo recorde", "h_s1": "Grave a frase", "h_s2": "Ouça ao contrário", "h_s3": "Imite o que ouviu", "h_s4": "Ouça sua imitação ao contrário", "h_d1": "Um grava em segredo o que quiser", "h_d2": "O outro ouve ao contrário", "h_d3": "E imita o que ouviu", "h_d4": "A imitação toca ao contrário. Adivinhe o que era!", "noMic": "Não tenho acesso ao microfone. Permita nas configurações do navegador, ou toque de novo para escolher um arquivo de áudio.", "noMic2": "Não tenho acesso ao microfone. Permita nas configurações do navegador.", "heardNothing": "Não ouvi nada. Tente outro microfone.", "tooShort": "Ficou muito curto. Grave pelo menos meio segundo.", "cantRead": "Não consegui ler esse som. Tente de novo.", "noPicker": "Este navegador não deixa escolher o microfone.", "speaker": "Viva-voz", "earpiece": "Fone", "auto": "Automático", "micN": "Microfone {n}"}, "en": {"docTitle": "Sing It Backwards", "title1": "Sing it", "title2": "Backwards", "sub": "Hear it backwards. Copy it. Guess it.", "playFriends": "Play with friends", "playSolo": "Practice solo", "language": "Language", "back": "Back to start", "helpAria": "How to play and microphone", "howTo": "How to play", "mic": "Microphone", "go": "Let's go", "done": "Done", "micHint": "Pick one and talk. The bar should move.", "callMode": "Call mode", "shuffle": "Another phrase", "newPhrase": "New phrase", "sayThis": "Say this", "soundsLike": "Backwards it sounds like", "nowImitate": "Now copy it", "rec": "Record", "stop": "Stop", "listen": "Listen", "listenRev": "Play backwards", "original": "Original", "imitate": "Copy it", "retry": "Retry", "resultAria": "Play the result", "playingRev": "Playing backwards", "playingOrig": "Playing the original", "tapRec": "Tap to record", "pickAudio": "Pick an audio file", "listenAny": "Listen as many times as you like", "player": "Player {n}", "pShort": "P{n}", "secret": "{p} · in secret", "recAnything": "Record anything you want", "cantHear": "{p} can't listen", "recorded": "Recorded", "passTo": "Pass the phone to {p}", "ready": "I'm ready", "tapReady": "Tap when you're ready", "rerecord": "Re-record", "listenBack": "Listen backwards", "guessK": "{p}, guess", "whatWas": "What was it?", "listenImit": "Play the copy backwards", "imitateAgain": "Copy again", "reveal": "Reveal", "yourImitRev": "Your copy, backwards", "sayAloud": "Say it out loud, then reveal", "itWas": "It was this", "gotIt": "Got it?", "listenOrig": "Play the original", "miss": "Missed", "hit": "Got it", "pointFor": "Point for {p}!", "noPoint": "No point this time.", "v5": "Legend.", "v4": "Almost identical!", "v3": "Not bad.", "v2": "Getting there.", "v1": "Another language.", "best": "Best {n}", "newBest": "New best", "h_s1": "Record the phrase", "h_s2": "Hear it backwards", "h_s3": "Copy what you heard", "h_s4": "Hear your copy backwards", "h_d1": "One player secretly records anything", "h_d2": "The other hears it backwards", "h_d3": "And copies what they heard", "h_d4": "The copy plays backwards. Guess what it was!", "noMic": "I can't access the microphone. Allow it in your browser settings, or tap again to pick an audio file.", "noMic2": "I can't access the microphone. Allow it in your browser settings.", "heardNothing": "I didn't hear anything. Try another microphone.", "tooShort": "Too short. Record at least half a second.", "cantRead": "I couldn't read that sound. Try again.", "noPicker": "This browser doesn't let you pick the microphone.", "speaker": "Speakerphone", "earpiece": "Earpiece", "auto": "Automatic", "micN": "Microphone {n}"}, "es": {"docTitle": "Canta al Revés", "title1": "Canta al", "title2": "Revés", "sub": "Escúchalo al revés. Imítalo. Adivínalo.", "playFriends": "Jugar con amigos", "playSolo": "Practicar solo", "language": "Idioma", "back": "Volver al inicio", "helpAria": "Cómo se juega y micrófono", "howTo": "Cómo se juega", "mic": "Micrófono", "go": "Vamos", "done": "Listo", "micHint": "Elige uno y habla. La barra tiene que moverse.", "callMode": "Modo llamada", "shuffle": "Otra frase", "newPhrase": "Nueva frase", "sayThis": "Di esto", "soundsLike": "Al revés suena así", "nowImitate": "Ahora imítalo", "rec": "Grabar", "stop": "Parar", "listen": "Escuchar", "listenRev": "Escuchar al revés", "original": "Original", "imitate": "Imitar", "retry": "Repetir", "resultAria": "Escuchar el resultado", "playingRev": "Sonando al revés", "playingOrig": "Sonando el original", "tapRec": "Toca para grabar", "pickAudio": "Elige un audio", "listenAny": "Escúchalo las veces que quieras", "player": "Jugador {n}", "pShort": "J{n}", "secret": "{p} · en secreto", "recAnything": "Graba lo que quieras", "cantHear": "El {p} no puede oírlo", "recorded": "Grabado", "passTo": "Pasa el móvil al {p}", "ready": "Estoy listo", "tapReady": "Toca cuando estés listo", "rerecord": "Volver a grabar", "listenBack": "Escúchalo al revés", "guessK": "{p}, adivina", "whatWas": "¿Qué era?", "listenImit": "Escuchar la imitación al revés", "imitateAgain": "Imitar otra vez", "reveal": "Revelar", "yourImitRev": "Tu imitación, al revés", "sayAloud": "Dilo en voz alta y luego revela", "itWas": "Era esto", "gotIt": "¿Acertó?", "listenOrig": "Escuchar el original", "miss": "Falló", "hit": "Acertó", "pointFor": "¡Punto para el {p}!", "noPoint": "Esta vez no hay punto.", "v5": "Leyenda.", "v4": "¡Casi igual!", "v3": "Nada mal.", "v2": "Casi.", "v1": "Otro idioma.", "best": "Récord {n}", "newBest": "Nuevo récord", "h_s1": "Graba la frase", "h_s2": "Escúchala al revés", "h_s3": "Imita lo que oíste", "h_s4": "Escucha tu imitación al revés", "h_d1": "Uno graba en secreto lo que quiera", "h_d2": "El otro lo escucha al revés", "h_d3": "E imita lo que oyó", "h_d4": "La imitación suena al revés. ¡Adivina qué era!", "noMic": "No tengo acceso al micrófono. Permítelo en los ajustes del navegador, o toca otra vez para elegir un archivo de audio.", "noMic2": "No tengo acceso al micrófono. Permítelo en los ajustes del navegador.", "heardNothing": "No oí nada. Prueba otro micrófono.", "tooShort": "Demasiado corto. Graba al menos medio segundo.", "cantRead": "No pude leer ese sonido. Inténtalo otra vez.", "noPicker": "Este navegador no deja elegir el micrófono.", "speaker": "Altavoz", "earpiece": "Auricular", "auto": "Automático", "micN": "Micrófono {n}"}, "fr": {"docTitle": "Chante à l'Envers", "title1": "Chante à", "title2": "l'Envers", "sub": "Écoute à l'envers. Imite. Devine.", "playFriends": "Jouer entre amis", "playSolo": "S'entraîner seul", "language": "Langue", "back": "Retour à l'accueil", "helpAria": "Règles et micro", "howTo": "Comment jouer", "mic": "Micro", "go": "C'est parti", "done": "OK", "micHint": "Choisis-en un et parle. La barre doit bouger.", "callMode": "Mode appel", "shuffle": "Autre phrase", "newPhrase": "Nouvelle phrase", "sayThis": "Dis ceci", "soundsLike": "À l'envers, ça donne", "nowImitate": "À toi d'imiter", "rec": "Enregistrer", "stop": "Stop", "listen": "Écouter", "listenRev": "Écouter à l'envers", "original": "Original", "imitate": "Imiter", "retry": "Rejouer", "resultAria": "Écouter le résultat", "playingRev": "Lecture à l'envers", "playingOrig": "Lecture de l'original", "tapRec": "Touche pour enregistrer", "pickAudio": "Choisis un audio", "listenAny": "Écoute autant de fois que tu veux", "player": "Joueur {n}", "pShort": "J{n}", "secret": "{p} · en secret", "recAnything": "Enregistre ce que tu veux", "cantHear": "Le {p} ne doit pas entendre", "recorded": "Enregistré", "passTo": "Passe le téléphone au {p}", "ready": "Je suis prêt", "tapReady": "Touche quand tu es prêt", "rerecord": "Refaire", "listenBack": "Écoute à l'envers", "guessK": "{p}, devine", "whatWas": "C'était quoi ?", "listenImit": "Écouter l'imitation à l'envers", "imitateAgain": "Réimiter", "reveal": "Révéler", "yourImitRev": "Ton imitation, à l'envers", "sayAloud": "Dis-le à voix haute, puis révèle", "itWas": "C'était ça", "gotIt": "Trouvé ?", "listenOrig": "Écouter l'original", "miss": "Raté", "hit": "Trouvé", "pointFor": "Point pour le {p} !", "noPoint": "Pas de point cette fois.", "v5": "Légende.", "v4": "Presque pareil !", "v3": "Pas mal.", "v2": "Presque.", "v1": "Une autre langue.", "best": "Record {n}", "newBest": "Nouveau record", "h_s1": "Enregistre la phrase", "h_s2": "Écoute-la à l'envers", "h_s3": "Imite ce que tu as entendu", "h_s4": "Écoute ton imitation à l'envers", "h_d1": "L'un enregistre en secret ce qu'il veut", "h_d2": "L'autre l'écoute à l'envers", "h_d3": "Et imite ce qu'il a entendu", "h_d4": "L'imitation passe à l'envers. Devine ce que c'était !", "noMic": "Je n'ai pas accès au micro. Autorise-le dans les réglages du navigateur, ou touche à nouveau pour choisir un fichier audio.", "noMic2": "Je n'ai pas accès au micro. Autorise-le dans les réglages du navigateur.", "heardNothing": "Je n'ai rien entendu. Essaie un autre micro.", "tooShort": "Trop court. Enregistre au moins une demi-seconde.", "cantRead": "Je n'ai pas pu lire ce son. Réessaie.", "noPicker": "Ce navigateur ne permet pas de choisir le micro.", "speaker": "Haut-parleur", "earpiece": "Écouteur", "auto": "Automatique", "micN": "Micro {n}"}, "it": {"docTitle": "Canta al Contrario", "title1": "Canta al", "title2": "Contrario", "sub": "Ascolta al contrario. Imita. Indovina.", "playFriends": "Gioca con gli amici", "playSolo": "Allenati da solo", "language": "Lingua", "back": "Torna all'inizio", "helpAria": "Come si gioca e microfono", "howTo": "Come si gioca", "mic": "Microfono", "go": "Andiamo", "done": "Fatto", "micHint": "Scegline uno e parla. La barra deve muoversi.", "callMode": "Modalità chiamata", "shuffle": "Altra frase", "newPhrase": "Nuova frase", "sayThis": "Di' questo", "soundsLike": "Al contrario suona così", "nowImitate": "Ora imita", "rec": "Registra", "stop": "Ferma", "listen": "Ascolta", "listenRev": "Ascolta al contrario", "original": "Originale", "imitate": "Imita", "retry": "Riprova", "resultAria": "Ascolta il risultato", "playingRev": "Al contrario", "playingOrig": "L'originale", "tapRec": "Tocca per registrare", "pickAudio": "Scegli un audio", "listenAny": "Ascolta quante volte vuoi", "player": "Giocatore {n}", "pShort": "G{n}", "secret": "{p} · in segreto", "recAnything": "Registra quello che vuoi", "cantHear": "Il {p} non deve sentire", "recorded": "Registrato", "passTo": "Passa il telefono al {p}", "ready": "Sono pronto", "tapReady": "Tocca quando sei pronto", "rerecord": "Registra di nuovo", "listenBack": "Ascolta al contrario", "guessK": "{p}, indovina", "whatWas": "Cos'era?", "listenImit": "Ascolta l'imitazione al contrario", "imitateAgain": "Imita di nuovo", "reveal": "Rivela", "yourImitRev": "La tua imitazione, al contrario", "sayAloud": "Dillo ad alta voce, poi rivela", "itWas": "Era questo", "gotIt": "Indovinato?", "listenOrig": "Ascolta l'originale", "miss": "Sbagliato", "hit": "Indovinato", "pointFor": "Punto al {p}!", "noPoint": "Niente punto stavolta.", "v5": "Leggenda.", "v4": "Quasi uguale!", "v3": "Niente male.", "v2": "Quasi.", "v1": "Un'altra lingua.", "best": "Record {n}", "newBest": "Nuovo record", "h_s1": "Registra la frase", "h_s2": "Ascoltala al contrario", "h_s3": "Imita quello che hai sentito", "h_s4": "Ascolta la tua imitazione al contrario", "h_d1": "Uno registra in segreto quello che vuole", "h_d2": "L'altro lo ascolta al contrario", "h_d3": "E imita quello che ha sentito", "h_d4": "L'imitazione suona al contrario. Indovina cos'era!", "noMic": "Non ho accesso al microfono. Consentilo nelle impostazioni del browser, o tocca di nuovo per scegliere un file audio.", "noMic2": "Non ho accesso al microfono. Consentilo nelle impostazioni del browser.", "heardNothing": "Non ho sentito niente. Prova un altro microfono.", "tooShort": "Troppo corto. Registra almeno mezzo secondo.", "cantRead": "Non riesco a leggere questo suono. Riprova.", "noPicker": "Questo browser non permette di scegliere il microfono.", "speaker": "Vivavoce", "earpiece": "Auricolare", "auto": "Automatico", "micN": "Microfono {n}"}, "de": {"docTitle": "Sing es Rückwärts", "title1": "Sing es", "title2": "Rückwärts", "sub": "Rückwärts hören. Nachmachen. Raten.", "playFriends": "Mit Freunden spielen", "playSolo": "Allein üben", "language": "Sprache", "back": "Zurück zum Start", "helpAria": "Spielregeln und Mikrofon", "howTo": "So wird gespielt", "mic": "Mikrofon", "go": "Los geht's", "done": "Fertig", "micHint": "Wähle eins und sprich. Der Balken muss sich bewegen.", "callMode": "Anrufmodus", "shuffle": "Anderer Satz", "newPhrase": "Neuer Satz", "sayThis": "Sag das", "soundsLike": "Rückwärts klingt es so", "nowImitate": "Jetzt nachmachen", "rec": "Aufnehmen", "stop": "Stopp", "listen": "Anhören", "listenRev": "Rückwärts anhören", "original": "Original", "imitate": "Nachmachen", "retry": "Nochmal", "resultAria": "Ergebnis anhören", "playingRev": "Läuft rückwärts", "playingOrig": "Original läuft", "tapRec": "Tippen zum Aufnehmen", "pickAudio": "Audiodatei wählen", "listenAny": "So oft anhören, wie du willst", "player": "Spieler {n}", "pShort": "S{n}", "secret": "{p} · geheim", "recAnything": "Nimm auf, was du willst", "cantHear": "{p} darf nicht zuhören", "recorded": "Aufgenommen", "passTo": "Gib das Handy an {p}", "ready": "Ich bin bereit", "tapReady": "Tippe, wenn du bereit bist", "rerecord": "Neu aufnehmen", "listenBack": "Rückwärts anhören", "guessK": "{p}, rate mal", "whatWas": "Was war's?", "listenImit": "Nachahmung rückwärts anhören", "imitateAgain": "Nochmal nachmachen", "reveal": "Auflösen", "yourImitRev": "Deine Nachahmung, rückwärts", "sayAloud": "Sag es laut und löse dann auf", "itWas": "Das war's", "gotIt": "Richtig geraten?", "listenOrig": "Original anhören", "miss": "Daneben", "hit": "Richtig", "pointFor": "Punkt für {p}!", "noPoint": "Diesmal kein Punkt.", "v5": "Legende.", "v4": "Fast gleich!", "v3": "Nicht schlecht.", "v2": "Fast.", "v1": "Andere Sprache.", "best": "Rekord {n}", "newBest": "Neuer Rekord", "h_s1": "Nimm den Satz auf", "h_s2": "Hör ihn rückwärts", "h_s3": "Mach nach, was du gehört hast", "h_s4": "Hör deine Nachahmung rückwärts", "h_d1": "Einer nimmt heimlich etwas auf", "h_d2": "Der andere hört es rückwärts", "h_d3": "Und macht es nach", "h_d4": "Die Nachahmung läuft rückwärts. Rate, was es war!", "noMic": "Kein Zugriff aufs Mikrofon. Erlaube es in den Browsereinstellungen oder tippe nochmal, um eine Audiodatei zu wählen.", "noMic2": "Kein Zugriff aufs Mikrofon. Erlaube es in den Browsereinstellungen.", "heardNothing": "Ich habe nichts gehört. Probier ein anderes Mikrofon.", "tooShort": "Zu kurz. Nimm mindestens eine halbe Sekunde auf.", "cantRead": "Ich konnte den Ton nicht lesen. Versuch es nochmal.", "noPicker": "Dieser Browser lässt dich kein Mikrofon wählen.", "speaker": "Lautsprecher", "earpiece": "Hörmuschel", "auto": "Automatisch", "micN": "Mikrofon {n}"}};
-  const PH = {"pt": ["O rato roeu a rolha da garrafa do rei da Rússia", "Três pratos de trigo para três tigres tristes", "Olá, eu sou o teu eco", "Banana", "Hoje vou comer pizza", "O meu gato chama-se Bolacha", "Parabéns a você", "Atirei o pau ao gato", "Bom dia, bom dia", "Pizza com ananás é crime", "Có-có-ró-cóóó", "Supercalifragilístico", "Um, dois, três, quatro", "Eu adoro jogar ao contrário"], "pt-BR": ["O rato roeu a roupa do rei de Roma", "Três pratos de trigo para três tigres tristes", "Oi, eu sou o seu eco", "Banana", "Hoje vou comer pizza", "Meu gato se chama Biscoito", "Parabéns pra você", "Atirei o pau no gato", "Bom dia, bom dia", "Pizza com abacaxi é crime", "Cocoricó", "Supercalifragilístico", "Um, dois, três, quatro", "Eu adoro jogar ao contrário"], "en": ["She sells seashells by the seashore", "Peter Piper picked a peck of pickled peppers", "Hello, I am your echo", "Banana", "I want pizza tonight", "My cat is called Cookie", "Happy birthday to you", "Red lorry, yellow lorry", "Good morning, good morning", "Pineapple on pizza is a crime", "Cock-a-doodle-doo", "Supercalifragilistic", "One, two, three, four", "I love playing backwards"], "es": ["Tres tristes tigres tragaban trigo en un trigal", "El perro de San Roque no tiene rabo", "Hola, soy tu eco", "Banana", "Hoy quiero comer pizza", "Mi gato se llama Galleta", "Cumpleaños feliz", "Buenos días, buenos días", "La piña en la pizza es un crimen", "Quiquiriquí", "Supercalifragilístico", "Uno, dos, tres, cuatro", "Me encanta jugar al revés"], "fr": ["Les chaussettes de l'archiduchesse sont-elles sèches", "Un chasseur sachant chasser", "Bonjour, je suis ton écho", "Banane", "Ce soir je mange une pizza", "Mon chat s'appelle Biscuit", "Joyeux anniversaire", "Bonjour, bonjour", "L'ananas sur la pizza, c'est un crime", "Cocorico", "Supercalifragilistique", "Un, deux, trois, quatre", "J'adore jouer à l'envers"], "it": ["Trentatré trentini entrarono a Trento", "Sopra la panca la capra campa", "Ciao, sono la tua eco", "Banana", "Stasera mangio la pizza", "Il mio gatto si chiama Biscotto", "Tanti auguri a te", "Buongiorno, buongiorno", "L'ananas sulla pizza è un crimine", "Chicchirichì", "Supercalifragilistico", "Uno, due, tre, quattro", "Adoro giocare al contrario"], "de": ["Fischers Fritz fischt frische Fische", "Blaukraut bleibt Blaukraut", "Hallo, ich bin dein Echo", "Banane", "Heute esse ich Pizza", "Meine Katze heißt Keks", "Zum Geburtstag viel Glück", "Guten Morgen, guten Morgen", "Ananas auf Pizza ist ein Verbrechen", "Kikeriki", "Superkalifragilistisch", "Eins, zwei, drei, vier", "Ich spiele gern rückwärts"]};
-  const LANGS = [["pt", "PT", "Português (Portugal)"], ["pt-BR", "BR", "Português (Brasil)"], ["en", "EN", "English"], ["es", "ES", "Español"], ["fr", "FR", "Français"], ["it", "IT", "Italiano"], ["de", "DE", "Deutsch"]];
-  let LANG = "pt";
-  function t(key, vars) {
-    let str = (I18N[LANG] && I18N[LANG][key]) || I18N.pt[key] || key;
-    if (vars) for (const k in vars) str = str.split("{" + k + "}").join(String(vars[k]));
-    return str;
-  }
-  function detectLang() {
-    let saved = null; try { saved = localStorage.getItem("cac-lang"); } catch (e) {}
-    if (saved && I18N[saved]) return saved;
-    const list = (navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || "en"]);
-    for (const raw of list) {
-      const l = String(raw).toLowerCase();
-      if (l === "pt-br") return "pt-BR";
-      const base = l.split("-")[0];
-      if (I18N[base]) return base;
-    }
-    return "en";
-  }
-  function applyStatic() {
-    document.querySelectorAll("[data-i18n]").forEach((el) => { el.textContent = t(el.dataset.i18n); });
-    document.querySelectorAll("[data-i18n-aria]").forEach((el) => { el.setAttribute("aria-label", t(el.dataset.i18nAria)); });
-    document.title = t("docTitle");
-    root.lang = LANG;
-    const L = LANGS.find((x) => x[0] === LANG); $("lang-code").textContent = L ? L[1] : LANG.toUpperCase();
-  }
-  function setLang(code, quiet) {
-    LANG = I18N[code] ? code : "en";
-    try { localStorage.setItem("cac-lang", LANG); } catch (e) {}
-    PHRASES = PH[LANG] || PH.en;
-    pIdx = 0;
-    applyStatic();
-    if (!quiet && S.mode) render();
-  }
-  function openLangSheet() {
-    const list = $("langlist"); list.innerHTML = "";
-    LANGS.forEach(([code, , name]) => {
-      const b = document.createElement("button");
-      b.type = "button"; b.className = "micopt"; b.textContent = name;
-      b.setAttribute("aria-pressed", String(code === LANG));
-      b.addEventListener("click", () => { setLang(code); $("langsheet").hidden = true; });
-      list.append(b);
-    });
-    $("langsheet").hidden = false;
-  }
-
-  const ICON = {
-    rec: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>',
-    stop: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></svg>',
-    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6a1 1 0 0 0 1.5.86l11-6.8a1 1 0 0 0 0-1.72l-11-6.8A1 1 0 0 0 8 5.2z" fill="currentColor"/></svg>',
-    back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5.2v13.6a1 1 0 0 1-1.5.86l-11-6.8a1 1 0 0 1 0-1.72l11-6.8A1 1 0 0 1 16 5.2z" fill="currentColor"/></svg>',
-    next: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    retry: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4v4.5H9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    yes: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    no: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>',
-    eye: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>',
-  };
-
-  let PHRASES = [];
-  let pIdx = 0;
-  const reverseText = (t) => Array.from(t).reverse().join("").toLowerCase().replace(/^./, (c) => c.toUpperCase());
-
-  /* ---------- estado ---------- */
-  // fases: 1 gravar, 2 ouvir ao contrário, 3 imitar, 4 resultado
-  const S = { mode: null, step: 1, score: null, orig: null, origrev: null, imit: null, result: null, turn: 0, scores: [0, 0] };
-
-  const buzz = (ms) => { try { navigator.vibrate && navigator.vibrate(ms || 8); } catch (e) {} };
-  let toastT = 0;
-  function toast(msg, ms) {
-    const t = $("toast"); t.textContent = msg; t.hidden = false;
-    clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, ms || 4000);
-  }
-
-  /* ---------- áudio ---------- */
-  let ctx = null, analyser = null, freq = null;
-  function audio() {
-    if (!ctx) {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
-      analyser = ctx.createAnalyser(); analyser.fftSize = 256; analyser.smoothingTimeConstant = 0.75;
-      freq = new Uint8Array(analyser.frequencyBinCount);
-    }
-    if (ctx.state === "suspended") ctx.resume();
-    return ctx;
-  }
-  function decode(arr) {
-    const c = audio();
-    return new Promise((res, rej) => { const p = c.decodeAudioData(arr, res, rej); if (p && p.then) p.then(res, rej); });
-  }
-  function toMono(buf) {
-    const len = Math.min(buf.length, Math.floor(buf.sampleRate * MAX_SECONDS));
-    const out = new Float32Array(len);
-    for (let ch = 0; ch < buf.numberOfChannels; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) out[i] += d[i] / buf.numberOfChannels; }
-    let peak = 0; for (let i = 0; i < len; i++) { const a = Math.abs(out[i]); if (a > peak) peak = a; }
-    if (peak > 0.001) { const g = 0.95 / peak; for (let i = 0; i < len; i++) out[i] *= g; }
-    return { data: out, rate: buf.sampleRate, peak };
-  }
-  function reversed(c) { const n = c.data.length, r = new Float32Array(n); for (let i = 0; i < n; i++) r[i] = c.data[n - 1 - i]; return { data: r, rate: c.rate }; }
-
-  /* ---------- anel animado ---------- */
-  let ringMode = "idle", ringProgress = 0;
-  function drawRing() {
-    const cv = $("ring"), dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
-    if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
-    const g = cv.getContext("2d");
-    g.setTransform(dpr, 0, 0, dpr, 0, 0);
-    g.clearRect(0, 0, W, H);
-    const fg = getComputedStyle(root).getPropertyValue("--fg").trim() || "#000";
-    const cx = W / 2, cy = H / 2, r0 = W * 0.27;
-    g.strokeStyle = fg; g.lineCap = "round";
-    if (ringMode !== "idle" && analyser) {
-      analyser.getByteFrequencyData(freq);
-      const N = 56;
-      g.lineWidth = 3.2;
-      for (let i = 0; i < N; i++) {
-        const k = (i * 11) % N, bin = 2 + Math.floor((k < N / 2 ? k : N - 1 - k) * 1.6);
-        const v = freq[bin] / 255;
-        const a = (i / N) * Math.PI * 2 - Math.PI / 2;
-        const len = 3 + v * W * 0.17;
-        g.globalAlpha = 0.35 + v * 0.65;
-        g.beginPath();
-        g.moveTo(cx + Math.cos(a) * (r0 + 10), cy + Math.sin(a) * (r0 + 10));
-        g.lineTo(cx + Math.cos(a) * (r0 + 10 + len), cy + Math.sin(a) * (r0 + 10 + len));
-        g.stroke();
-      }
-      // progresso
-      g.globalAlpha = 1; g.lineWidth = 3;
-      g.beginPath(); g.arc(cx, cy, r0 + 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ringProgress); g.stroke();
-    }
-    g.globalAlpha = 0.18; g.lineWidth = 3;
-    g.beginPath(); g.arc(cx, cy, r0 + 3, 0, Math.PI * 2); g.stroke();
-    g.globalAlpha = 1;
-  }
-  function loop() { drawRing(); if (ringMode !== "idle") requestAnimationFrame(loop); }
-  function ringStart(mode) { const was = ringMode; ringMode = mode; $("app").classList.remove("idle"); if (was === "idle") requestAnimationFrame(loop); }
-  function ringStop() { ringMode = "idle"; ringProgress = 0; $("app").classList.add("idle"); drawRing(); }
-
-  /* ---------- reprodução ---------- */
-  let playing = null;
-  function stopPlay() {
-    if (!playing) return;
-    const p = playing; playing = null;
-    try { p.src.onended = null; p.src.stop(); } catch (e) {}
-    clearInterval(p.timer);
-    ringStop(); render();
-  }
-  function play(key) {
-    const same = playing && playing.key === key;
-    stopPlay(); if (same) return;
-    const clip = S[key]; if (!clip) return;
-    buzz();
-    const c = audio();
-    const b = c.createBuffer(1, clip.data.length, clip.rate); b.getChannelData(0).set(clip.data);
-    const src = c.createBufferSource(); src.buffer = b;
-    src.connect(analyser); analyser.connect(c.destination);
-    const t0 = c.currentTime + 0.02, D = b.duration;
-    const p = { key, src, timer: 0 };
-    playing = p;
-    p.timer = setInterval(() => { ringProgress = Math.min(1, Math.max(0, (c.currentTime - t0) / D)); }, 30);
-    src.onended = () => { if (playing === p) { try { analyser.disconnect(); } catch (e) {} stopPlay(); } };
-    src.start(t0);
-    ringStart("play"); render();
-  }
-
-  /* ---------- gravação ---------- */
-  const pol = document.permissionsPolicy || document.featurePolicy;
-  let micOK = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
-  try { if (micOK && pol && pol.allowsFeature && !pol.allowsFeature("microphone")) micOK = false; } catch (e) {}
-
-  let rec = null;
-  async function toggleMic() {
-    if (rec) { if (rec.mr.state === "recording") rec.mr.stop(); return; }
-    stopPlay(); audio(); buzz(12);
-    let stream;
-    try { stream = await openMic(); }
-    catch (e) { micOK = false; render(); toast(t("noMic"), 6000); return; }
-    let mr;
-    try { mr = new MediaRecorder(stream); } catch (e) { stream.getTracks().forEach((t) => t.stop()); micOK = false; render(); return; }
-    try { analyser.disconnect(); } catch (e) {}
-    const node = ctx.createMediaStreamSource(stream); node.connect(analyser);
-    const chunks = [], t0 = performance.now();
-    rec = { mr, timer: 0 };
-    rec.timer = setInterval(() => {
-      const s = (performance.now() - t0) / 1000;
-      ringProgress = s / MAX_SECONDS;
-      $("hint").textContent = "0:" + String(Math.floor(s)).padStart(2, "0");
-      if (s >= MAX_SECONDS && mr.state === "recording") mr.stop();
-    }, 100);
-    mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
-    mr.onstop = () => {
-      clearInterval(rec.timer); rec = null;
-      stream.getTracks().forEach((t) => t.stop());
-      try { node.disconnect(); } catch (e) {}
-      ringStop();
-      ingest(new Blob(chunks, { type: mr.mimeType || "audio/webm" }));
-    };
-    mr.start();
-    ringStart("rec"); render();
-    $("hint").textContent = "0:00";
-  }
-
-  async function ingest(blob) {
-    stopPlay();
-    const slot = S.step === 1 ? "orig" : "imit";
-    try {
-      const clip = toMono(await decode(await blob.arrayBuffer()));
-      if (clip.data.length < clip.rate * 0.3) throw new Error("short");
-      if (blob instanceof Blob && !(blob instanceof File) && clip.peak < 0.02) {
-        render(); toast(t("heardNothing"), 5000); openMicSheet(); return;
-      }
-      buzz(20);
-      if (slot === "orig") {
-        S.orig = clip; S.origrev = reversed(clip); S.imit = S.result = null; S.score = null;
-        if (S.mode === "duo") { go(2); return; }
-        go(2); setTimeout(() => { if (S.step === 2) play("origrev"); }, 450);
-      } else if (S.mode === "duo") {
-        S.imit = clip; S.result = reversed(clip);
-        go(5); setTimeout(() => { if (S.step === 5) play("result"); }, 450);
-      } else {
-        S.imit = clip; S.result = reversed(clip);
-        let n = 0; try { n = similarity(S.orig, S.result); } catch (e) {}
-        S.score = n; go(4); countUp(n); saveBest(n);
-        setTimeout(() => { if (S.step === 4) play("result"); }, 900);
-      }
-    } catch (e) {
-      render();
-      toast(e && e.message === "short" ? t("tooShort") : t("cantRead"));
-    }
-  }
-
-  /* ---------- botões ---------- */
-  function bigButton(kind, label, onClick) {
-    const file = kind === "rec" && !micOK;
-    const el = document.createElement(file ? "label" : "button");
-    if (!file) el.type = "button";
-    el.className = "big"; el.setAttribute("aria-label", label);
-    el.innerHTML = ICON[kind];
-    if (file) {
-      const inp = document.createElement("input");
-      inp.type = "file"; inp.accept = "audio/*"; inp.id = "rec-file"; inp.setAttribute("aria-label", label);
-      inp.addEventListener("click", () => { stopPlay(); audio(); buzz(); });
-      inp.addEventListener("change", () => { const f = inp.files && inp.files[0]; inp.value = ""; if (f) ingest(f); });
-      el.append(inp);
-    } else el.addEventListener("click", onClick);
-    return el;
-  }
-  function mini(icon, label, onClick, on) {
-    const b = document.createElement("button");
-    b.type = "button"; b.className = "mini" + (on ? " on" : "");
-    b.innerHTML = '<span class="disc">' + ICON[icon] + "</span><span></span>";
-    b.lastChild.textContent = label;
-    b.addEventListener("click", onClick);
-    return b;
-  }
-
-  /* ---------- render ---------- */
-  const VERDICT = (n) => t(n >= 85 ? "v5" : n >= 70 ? "v4" : n >= 55 ? "v3" : n >= 40 ? "v2" : "v1");
-  let lastPhraseMode = "fwd";
-
-  function go(step) { S.step = step; buzz(); render(); }
-
-  const THEME = { rec: "#FF5B2E", listen: "#2E2BF5", result: "#FFE14A", dark: "#170A05" };
-  function setPhase(ph) {
-    root.dataset.phase = ph;
-    try { document.querySelector('meta[name="theme-color"]').content = THEME[ph]; } catch (e) {}
-  }
-  const isPlaying = (k) => playing && playing.key === k;
-  const P = (n) => t("player", { n: n + 1 });
-
-  function render() {
-    if (!S.mode) return;
-    const duo = S.mode === "duo", st = S.step, total = duo ? 6 : 4;
-    setPhase(duo ? { 1: "rec", 2: "dark", 3: "listen", 4: "rec", 5: "result", 6: "dark" }[st] : { 1: "rec", 2: "listen", 3: "rec", 4: "result" }[st]);
-    const dots = $("dots");
-    if (dots.children.length !== total) dots.innerHTML = "<i></i>".repeat(total);
-    dots.querySelectorAll("i").forEach((d, i) => { d.className = i + 1 === st ? "now" : i + 1 < st ? "done" : ""; });
-    $("tally").hidden = !duo; $("dots").hidden = duo;
-    if (duo) $("tally").innerHTML = "<small>" + t("pShort", { n: 1 }) + "</small>" + S.scores[0] + "<i>–</i>" + S.scores[1] + "<small>" + t("pShort", { n: 2 }) + "</small>";
-    $("home-btn").hidden = !!rec;
-    $("left").innerHTML = ""; $("right").innerHTML = ""; $("big-slot").innerHTML = ""; $("hint").innerHTML = "";
-    if (duo) renderDuo(); else renderSolo();
-  }
-
-  function setWords(kicker, title) {
-    const k = $("kicker"), ph = $("phrase");
-    k.hidden = !kicker; k.textContent = kicker || "";
-    ph.hidden = false;
-    if (ph.textContent !== title) { ph.textContent = title; ph.classList.remove("flip"); void ph.offsetWidth; ph.classList.add("flip"); }
-    lastPhraseMode = "duo";
-    $("shuffle").hidden = true; $("score").hidden = true;
-  }
-
-  function renderDuo() {
-    const st = S.step, a = S.turn, b = 1 - S.turn;
-    const left = $("left"), right = $("right"), slot = $("big-slot"), hint = $("hint");
-    if (st === 1) {
-      setWords(t("secret", { p: P(a) }), t("recAnything"));
-      slot.append(bigButton(rec ? "stop" : "rec", rec ? t("stop") : t("rec"), toggleMic));
-      if (!rec) hint.textContent = t("cantHear", { p: P(b) });
-    }
-    if (st === 2) {
-      setWords(t("recorded"), t("passTo", { p: P(b) }));
-      slot.append(bigButton("next", t("ready"), () => go(3)));
-      left.append(mini("retry", t("rerecord"), () => { S.orig = S.origrev = null; go(1); }));
-      hint.textContent = t("tapReady");
-    }
-    if (st === 3) {
-      setWords(P(b), t("listenBack"));
-      slot.append(bigButton(isPlaying("origrev") ? "stop" : "back", t("listenRev"), () => play("origrev")));
-      right.append(mini("next", t("imitate"), () => { stopPlay(); go(4); }));
-      hint.textContent = isPlaying("origrev") ? t("playingRev") : t("listenAny");
-    }
-    if (st === 4) {
-      setWords(P(b), t("nowImitate"));
-      slot.append(bigButton(rec ? "stop" : "rec", rec ? t("stop") : t("rec"), toggleMic));
-      if (!rec) {
-        left.append(mini("back", t("listen"), () => play("origrev"), isPlaying("origrev")));
-        hint.textContent = isPlaying("origrev") ? t("playingRev") : micOK ? t("tapRec") : t("pickAudio");
-      }
-    }
-    if (st === 5) {
-      setWords(t("guessK", { p: P(b) }), t("whatWas"));
-      slot.append(bigButton(isPlaying("result") ? "stop" : "play", t("listenImit"), () => play("result")));
-      left.append(mini("retry", t("imitateAgain"), () => { stopPlay(); S.imit = S.result = null; go(4); }));
-      right.append(mini("eye", t("reveal"), () => { stopPlay(); go(6); setTimeout(() => { if (S.step === 6) play("orig"); }, 350); }));
-      hint.textContent = isPlaying("result") ? t("yourImitRev") : t("sayAloud");
-    }
-    if (st === 6) {
-      setWords(t("itWas"), t("gotIt"));
-      slot.append(bigButton(isPlaying("orig") ? "stop" : "play", t("listenOrig"), () => play("orig")));
-      const row = document.createElement("div"); row.className = "choices";
-      const mk = (cls, icon, label, hit) => { const c = document.createElement("button"); c.type = "button"; c.className = "choice " + cls; c.innerHTML = ICON[icon] + "<span></span>"; c.lastChild.textContent = label; c.addEventListener("click", () => endRound(hit)); return c; };
-      row.append(mk("no", "no", t("miss"), false), mk("yes", "yes", t("hit"), true));
-      hint.append(row);
-    }
-  }
-
-  function endRound(hit) {
-    stopPlay();
-    const b = 1 - S.turn;
-    if (hit) S.scores[b]++;
-    buzz(hit ? 30 : 10);
-    toast(hit ? t("pointFor", { p: P(b) }) : t("noPoint"), 2500);
-    S.turn = b;
-    S.orig = S.origrev = S.imit = S.result = null;
-    go(1);
-  }
-
-  function renderSolo() {
-    const st = S.step;
-
-    const phrase = PHRASES[pIdx];
-    const mode = st === 1 ? "fwd" : "rev";
-    const ph = $("phrase");
-    const txt = mode === "fwd" ? phrase : reverseText(phrase);
-    if (ph.textContent !== txt) {
-      ph.textContent = txt;
-      if (mode !== lastPhraseMode) { ph.classList.remove("flip"); void ph.offsetWidth; ph.classList.add("flip"); }
-    }
-    lastPhraseMode = mode;
-    ph.hidden = st === 4;
-    $("kicker").textContent = [t("sayThis"), t("soundsLike"), t("nowImitate"), ""][st - 1];
-    $("kicker").hidden = st === 4;
-    $("shuffle").hidden = st !== 1 || !!rec;
-    $("score").hidden = st !== 4;
-
-    const left = $("left"), right = $("right"), slot = $("big-slot");
-    left.innerHTML = ""; right.innerHTML = ""; slot.innerHTML = "";
-    const hint = $("hint"); hint.innerHTML = "";
-
-    if (st === 1 || st === 3) {
-      slot.append(bigButton(rec ? "stop" : "rec", rec ? t("stop") : t("rec"), toggleMic));
-      if (st === 3 && !rec) left.append(mini("back", t("listen"), () => play("origrev"), isPlaying("origrev")));
-      if (!rec) hint.textContent = isPlaying("origrev") ? t("playingRev") : micOK ? t("tapRec") : t("pickAudio");
-    }
-    if (st === 2) {
-      slot.append(bigButton(isPlaying("origrev") ? "stop" : "back", t("listenRev"), () => play("origrev")));
-      left.append(mini("play", t("original"), () => play("orig"), isPlaying("orig")));
-      right.append(mini("next", t("imitate"), () => { stopPlay(); go(3); }));
-      hint.textContent = isPlaying("origrev") ? t("playingRev") : isPlaying("orig") ? t("playingOrig") : t("listenAny");
-    }
-    if (st === 4) {
-      slot.append(bigButton(isPlaying("result") ? "stop" : "play", t("resultAria"), () => play("result")));
-      left.append(mini("play", t("original"), () => play("orig"), isPlaying("orig")));
-      right.append(mini("retry", t("retry"), () => { stopPlay(); S.imit = S.result = null; S.score = null; go(3); }));
-      const nb = document.createElement("button");
-      nb.type = "button"; nb.className = "pill"; nb.textContent = t("newPhrase");
-      nb.addEventListener("click", () => { restart(); shuffle(); });
-      hint.append(nb);
-    }
-  }
-
-  function restart() { stopPlay(); S.orig = S.origrev = S.imit = S.result = null; S.score = null; go(1); }
-
-  /* ---------- início e modos ---------- */
-  function showHome() {
-    if (rec) return;
-    stopPlay();
-    S.mode = null;
-    $("app").hidden = true; $("home").hidden = false;
-    setPhase("dark");
-  }
-  function startMode(m) {
-    audio(); buzz();
-    S.mode = m; S.step = 1; S.score = null; S.turn = 0; S.scores = [0, 0];
-    S.orig = S.origrev = S.imit = S.result = null;
-    lastPhraseMode = "start";
-    $("home").hidden = true; $("app").hidden = false;
-    render(); drawRing();
-  }
-  $("start-duo").addEventListener("click", () => startMode("duo"));
-  $("start-solo").addEventListener("click", () => startMode("solo"));
-  $("home-btn").addEventListener("click", showHome);
-  const HELP = {
-    solo: [["#FF5B2E", "h_s1"], ["#2E2BF5", "h_s2"], ["#FF5B2E", "h_s3"], ["#170A05", "h_s4"]],
-    duo: [["#FF5B2E", "h_d1"], ["#2E2BF5", "h_d2"], ["#FF5B2E", "h_d3"], ["#170A05", "h_d4"]],
-  };
-  function fillHelp() {
-    const ol = $("help-list"); ol.innerHTML = "";
-    HELP[S.mode === "solo" ? "solo" : "duo"].forEach(([c, k], i) => {
-      const li = document.createElement("li"), b = document.createElement("b");
-      b.style.background = c; b.textContent = String(i + 1);
-      li.append(b, t(k)); ol.append(li);
-    });
-  }
-  function shuffle() {
-    let n; do { n = Math.floor(Math.random() * PHRASES.length); } while (n === pIdx);
-    pIdx = n; buzz();
-    const ph = $("phrase"); ph.textContent = ""; render();
-    ph.classList.remove("flip"); void ph.offsetWidth; ph.classList.add("flip");
-  }
-  $("shuffle").addEventListener("click", shuffle);
-
-  function countUp(n) {
-    $("verdict").textContent = VERDICT(n);
-    const t0 = performance.now(), D = 1100, el = $("score-num");
-    const tick = (t) => {
-      const f = Math.min(1, Math.max(0, (t - t0) / D)), e = 1 - Math.pow(1 - f, 4);
-      el.textContent = String(Math.round(n * e));
-      if (f < 1) requestAnimationFrame(tick);
-    };
-    el.textContent = "0"; requestAnimationFrame(tick);
-  }
-  function readBest() { try { return Number(localStorage.getItem("cac-best") || 0); } catch (e) { return 0; } }
-  function saveBest(n) {
-    const b = readBest();
-    if (n > b) { try { localStorage.setItem("cac-best", String(n)); } catch (e) {} $("best").textContent = b ? t("newBest") : ""; }
-    else $("best").textContent = t("best", { n: b });
-  }
-
-  /* ---------- ajuda ---------- */
-  /* ---------- escolha do microfone ---------- */
-  const store = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
-  let micId = store.get("cac-mic") || "";
-  let callMode = store.get("cac-call") === "1";
-  $("mic-call").checked = callMode;
-  function constraints(id) {
-    const a = { echoCancellation: callMode, noiseSuppression: callMode, autoGainControl: true };
-    if (id) a.deviceId = { exact: id };
-    return { audio: a };
-  }
-  async function openMic(id) {
-    const want = id === undefined ? micId : id;
-    try { return await navigator.mediaDevices.getUserMedia(constraints(want)); }
-    catch (e) {
-      if (want && (e.name === "OverconstrainedError" || e.name === "NotFoundError" || e.name === "NotReadableError")) {
-        micId = ""; store.set("cac-mic", "");
-        return navigator.mediaDevices.getUserMedia(constraints(""));
-      }
-      throw e;
-    }
-  }
-  const NAMES = { "speakerphone": "speaker", "headset earpiece": "earpiece", "default": "auto" };
-  function niceName(d, i) {
-    if (!d.deviceId) return [t("auto"), ""];
-    const l = (d.label || "").trim(), k = l.toLowerCase();
-    for (const key in NAMES) if (k === key || k.startsWith(key)) return [t(NAMES[key]), l];
-    return [l || t("micN", { n: i + 1 }), ""];
-  }
-  let test = null;
-  function stopTest() {
-    if (!test) return;
-    cancelAnimationFrame(test.raf);
-    test.stream.getTracks().forEach((t) => t.stop());
-    try { test.node.disconnect(); } catch (e) {}
-    test = null;
-  }
-  async function startTest(id) {
-    stopTest();
-    let stream;
-    try { stream = await openMic(id); } catch (e) { return false; }
-    const c = audio(), node = c.createMediaStreamSource(stream), an = c.createAnalyser();
-    an.fftSize = 1024; node.connect(an);
-    const buf = new Float32Array(an.fftSize);
-    test = { stream, node, raf: 0 };
-    const t = test;
-    const tick = () => {
-      if (test !== t) return;
-      an.getFloatTimeDomainData(buf);
-      let s = 0; for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
-      const v = Math.min(1, Math.sqrt(s / buf.length) * 6);
-      const bar = document.querySelector('.micopt[aria-pressed="true"] .meter i');
-      if (bar) bar.style.width = Math.round(v * 100) + "%";
-      t.raf = requestAnimationFrame(tick);
-    };
-    tick();
-    return true;
-  }
-  async function openMicSheet() {
-    if (rec) return;
-    stopPlay();
-    $("micsheet").hidden = false;
-    const list = $("miclist");
-    list.textContent = "";
-    if (!(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices)) { list.textContent = t("noPicker"); return; }
-    const ok = await startTest(micId);
-    if (!ok) { list.textContent = t("noMic2"); return; }
-    const devs = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === "audioinput");
-    const seen = new Set();
-    const opts = [{ deviceId: "", label: "default" }].concat(devs.filter((d) => d.deviceId && d.deviceId !== "default" && d.deviceId !== "communications"));
-    opts.forEach((d, i) => {
-      if (seen.has(d.deviceId)) return; seen.add(d.deviceId);
-      const [name, sub] = niceName(d, i);
-      const b = document.createElement("button");
-      b.type = "button"; b.className = "micopt";
-      b.setAttribute("aria-pressed", String(d.deviceId === micId));
-      const top = document.createElement("span"); top.textContent = name;
-      if (sub && sub !== name) { const sm = document.createElement("small"); sm.textContent = " · " + sub; top.append(sm); }
-      const m = document.createElement("span"); m.className = "meter"; m.innerHTML = "<i></i>";
-      b.append(top, m);
-      b.addEventListener("click", async () => {
-        micId = d.deviceId; store.set("cac-mic", micId);
-        list.querySelectorAll(".micopt").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-        buzz(); await startTest(micId);
-      });
-      list.append(b);
-    });
-    if (!list.querySelector('[aria-pressed="true"]') && list.firstChild) list.firstChild.setAttribute("aria-pressed", "true");
-  }
-  function closeMicSheet() { stopTest(); $("micsheet").hidden = true; }
-  $("mic").addEventListener("click", () => { $("sheet").hidden = true; openMicSheet(); });
-  $("mic-ok").addEventListener("click", closeMicSheet);
-  $("micsheet").addEventListener("click", (e) => { if (e.target === $("micsheet")) closeMicSheet(); });
-  $("mic-call").addEventListener("change", (e) => { callMode = e.target.checked; store.set("cac-call", callMode ? "1" : "0"); if (test) startTest(micId); });
-  $("mic").hidden = !micOK;
-
-  const openHelp = () => { fillHelp(); $("sheet").hidden = false; $("sheet-ok").focus(); };
-  $("home-help").addEventListener("click", openHelp);
-  $("lang-btn").addEventListener("click", openLangSheet);
-  $("langsheet").addEventListener("click", (e) => { if (e.target === $("langsheet")) $("langsheet").hidden = true; });
-  setInterval(() => { if (!$("home").hidden && !document.hidden) $("flipword").classList.toggle("rev"); }, 2600);
-  $("help").addEventListener("click", () => { fillHelp(); $("sheet").hidden = false; $("sheet-ok").focus(); });
-  $("sheet-ok").addEventListener("click", () => { $("sheet").hidden = true; });
-  $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sheet").hidden = true; });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("sheet").hidden = true; $("langsheet").hidden = true; if (!$("micsheet").hidden) closeMicSheet(); } });
-  window.addEventListener("resize", drawRing);
-
-  /* ---------- pontuação: semelhança espectral + DTW ---------- */
-  function fft(re, im) {
-    const n = re.length;
-    for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit;
-      if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
-    for (let len = 2; len <= n; len <<= 1) {
-      const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
-      for (let i = 0; i < n; i += len) { let cr = 1, ci = 0;
-        for (let k = 0; k < len / 2; k++) { const a = i + k, b = a + len / 2;
-          const xr = re[b] * cr - im[b] * ci, xi = re[b] * ci + im[b] * cr;
-          re[b] = re[a] - xr; im[b] = im[a] - xi; re[a] += xr; im[a] += xi;
-          const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t; } }
-    }
-  }
-  function features(clip) {
-    const f = Math.max(1, Math.round(clip.rate / 16000));
-    const n = Math.floor(clip.data.length / f), x = new Float32Array(n);
-    for (let i = 0; i < n; i++) { let s = 0; for (let k = 0; k < f; k++) s += clip.data[i * f + k]; x[i] = s / f; }
-    const fs = clip.rate / f, N = 512, hop = Math.round(fs * 0.01), B = 24;
-    const mel = (h) => 2595 * Math.log10(1 + h / 700), imel = (m) => 700 * (Math.pow(10, m / 2595) - 1);
-    const lo = mel(80), hi = mel(Math.min(7000, fs / 2 - 100));
-    const edges = []; for (let i = 0; i < B + 2; i++) edges.push(Math.floor(imel(lo + (hi - lo) * i / (B + 1)) / fs * N));
-    const win = new Float32Array(N); for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
-    const raw = [], energy = [], re = new Float64Array(N), im = new Float64Array(N);
-    for (let s = 0; s + N <= n; s += hop) {
-      let e = 0;
-      for (let i = 0; i < N; i++) { re[i] = x[s + i] * win[i]; im[i] = 0; e += x[s + i] * x[s + i]; }
-      fft(re, im);
-      const v = new Float32Array(B);
-      for (let b = 0; b < B; b++) {
-        const a = edges[b], c = edges[b + 1], z = Math.max(edges[b + 2], c + 1); let sum = 0;
-        for (let k = a; k < z; k++) { const w = k < c ? (k - a) / Math.max(1, c - a) : (z - k) / Math.max(1, z - c); sum += w * (re[k] * re[k] + im[k] * im[k]); }
-        v[b] = sum;
-      }
-      raw.push(v); energy.push(10 * Math.log10(e / N + 1e-10));
-    }
-    let peakBand = 0; for (const v of raw) for (let b = 0; b < B; b++) if (v[b] > peakBand) peakBand = v[b];
-    const floor = peakBand * 3e-5 + 1e-12;
-    const frames = raw.map((v) => v.map((y) => Math.log(y + floor)));
-    let mx = -Infinity; for (const e of energy) if (e > mx) mx = e;
-    let a = 0, z = energy.length - 1;
-    while (a < z && energy[a] < mx - 30) a++;
-    while (z > a && energy[z] < mx - 30) z--;
-    let fr = frames.slice(a, z + 1);
-    const mean = new Float32Array(B);
-    for (const v of fr) for (let b = 0; b < B; b++) mean[b] += v[b] / fr.length;
-    fr = fr.map((v) => v.map((y, b) => y - mean[b]));
-    const MAXF = 250;
-    if (fr.length > MAXF) {
-      const out = [], r = fr.length / MAXF;
-      for (let i = 0; i < MAXF; i++) {
-        const s0 = Math.floor(i * r), s1 = Math.max(s0 + 1, Math.floor((i + 1) * r)), v = new Float32Array(B);
-        for (let j = s0; j < s1; j++) for (let b = 0; b < B; b++) v[b] += fr[j][b] / (s1 - s0);
-        out.push(v);
-      }
-      fr = out;
-    }
-    return { frames: fr, seconds: (z - a + 1) * hop / fs };
-  }
-  function cosDist(p, q) { let d = 0, a = 0, b = 0; for (let i = 0; i < p.length; i++) { d += p[i] * q[i]; a += p[i] * p[i]; b += q[i] * q[i]; } return 1 - d / (Math.sqrt(a * b) + 1e-9); }
-  function dtw(A, Bf) {
-    const n = A.length, m = Bf.length, INF = 1e18;
-    let prev = new Float64Array(m + 1).fill(INF), cur = new Float64Array(m + 1); prev[0] = 0;
-    for (let i = 1; i <= n; i++) {
-      cur[0] = INF;
-      for (let j = 1; j <= m; j++) { const c = cosDist(A[i - 1], Bf[j - 1]); cur[j] = Math.min(prev[j - 1] + 2 * c, prev[j] + c, cur[j - 1] + c); }
-      const t = prev; prev = cur; cur = t;
-    }
-    return prev[m] / (n + m);
-  }
-  function similarity(c1, c2) {
-    const f1 = features(c1), f2 = features(c2);
-    if (f1.frames.length < 5 || f2.frames.length < 5) return 0;
-    const d = dtw(f1.frames, f2.frames);
-    let s = Math.min(1, Math.max(0, (0.6 - d) / 0.4));
-    const r = Math.min(f1.seconds, f2.seconds) / Math.max(f1.seconds, f2.seconds);
-    s *= 0.65 + 0.35 * r;
-    return Math.round(100 * Math.pow(s, 0.85));
-  }
-
-  setLang(detectLang(), true);
-  showHome();
-  drawRing();
-  if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawRing);
-})();
-</script>
+<script src="js/i18n.js"></script>
+<script src="js/score.js"></script>
+<script src="js/app.js"></script>
 
 </body>
 </html>

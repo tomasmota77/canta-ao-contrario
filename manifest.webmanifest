@@ -1,0 +1,19 @@
+{
+  "name": "Canta ao Contrário",
+  "short_name": "Contrário",
+  "description": "Ouve ao contrário, imita e adivinha. Um jogo de festa para cantar ao contrário com amigos.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#170A05",
+  "theme_color": "#170A05",
+  "lang": "pt",
+  "categories": ["games", "music", "entertainment"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
