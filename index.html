@@ -30,6 +30,7 @@
 }
 :root[data-phase="listen"] { --bg: var(--ultra); --fg: var(--white); }
 :root[data-phase="result"] { --bg: var(--butter); --fg: var(--ink); }
+:root[data-phase="dark"] { --bg: var(--ink); --fg: var(--white); }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -132,6 +133,32 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .sheet li { display: flex; gap: 12px; align-items: center; }
 .sheet li b { width: 28px; height: 28px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: .85rem; color: var(--white); }
 .bar-right { display: flex; gap: 8px; }
+.bar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.tally { font-weight: 700; font-size: .88rem; font-variant-numeric: tabular-nums; padding: 6px 11px; border-radius: 99px; background: color-mix(in srgb, var(--fg) 10%, transparent); white-space: nowrap; }
+
+/* início */
+.home {
+  height: 100%; max-width: 480px; margin: 0 auto;
+  display: flex; flex-direction: column; gap: 14px;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+  padding-block: 28px 22px;
+}
+.brandmark { margin: auto 0 0; font-family: var(--display); font-weight: 800; font-size: clamp(3.3rem, 17vw, 5rem); line-height: .86; letter-spacing: -.05em; }
+.brandmark .mir { display: inline-block; transform: scaleX(-1); color: var(--tomato); }
+.home-sub { margin: 4px 0 auto; font-size: 1.05rem; font-weight: 500; opacity: .6; }
+.modes { display: grid; gap: 12px; }
+.mode-card {
+  display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; align-items: center; text-align: left;
+  border-radius: 28px; padding: 22px 22px 20px; transition: transform .15s cubic-bezier(.3,.7,.2,1);
+}
+.mode-card:active { transform: scale(.97); }
+.mode-card b { font-family: var(--display); font-weight: 800; font-size: 2rem; line-height: 1; letter-spacing: -.03em; }
+.mode-card span { grid-column: 1; font-weight: 500; font-size: .98rem; opacity: .8; line-height: 1.3; }
+.mode-card svg { grid-column: 2; grid-row: 1 / span 2; width: 30px; height: 30px; }
+.mode-card.duo { background: var(--tomato); color: var(--ink); }
+.mode-card.solo { background: var(--ultra); color: var(--white); }
+.mode-card:focus-visible { outline: 3px solid var(--white); outline-offset: 3px; }
 .icon-btn svg { width: 20px; height: 20px; }
 .muted { margin: -8px 0 0; font-size: .98rem; color: #6B5E58; }
 .miclist { display: grid; gap: 8px; }
@@ -162,9 +189,22 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 </head>
 <body>
-<div class="app idle" id="app">
+<div class="home" id="home">
+  <h1 class="brandmark">Canta ao<br><span class="mir">Contrário</span></h1>
+  <p class="home-sub">Ouve ao contrário. Imita. Adivinha.</p>
+  <div class="modes">
+    <button class="mode-card duo" id="start-duo" type="button"><b>Adivinha</b><span>Com amigos. Um grava em segredo, o outro adivinha.</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button class="mode-card solo" id="start-solo" type="button"><b>Sozinho</b><span>Imita frases ao contrário e ganha pontos.</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </div>
+</div>
+
+<div class="app idle" id="app" hidden>
   <header class="bar">
-    <div class="dots" id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="bar-left">
+      <button class="icon-btn" id="home-btn" type="button" aria-label="Voltar ao início"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="dots" id="dots" aria-hidden="true"></div>
+      <span class="tally" id="tally" hidden></span>
+    </div>
     <div class="bar-right">
       <button class="icon-btn" id="mic" type="button" aria-label="Escolher microfone"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
       <button class="icon-btn" id="help" type="button" aria-label="Como se joga">?</button>
@@ -213,12 +253,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 <div class="sheet-wrap" id="sheet" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
     <h2 id="sheet-title">Como se joga</h2>
-    <ol>
-      <li><b style="background:#FF5B2E">1</b>Grava a frase</li>
-      <li><b style="background:#2E2BF5">2</b>Ouve-a ao contrário</li>
-      <li><b style="background:#FF5B2E">3</b>Imita o que ouviste</li>
-      <li><b style="background:#170A05">4</b>Ouve a tua imitação ao contrário</li>
-    </ol>
+    <ol id="help-list"></ol>
     <button class="ok" id="sheet-ok" type="button">Bora</button>
   </div>
 </div>
@@ -237,6 +272,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5.2v13.6a1 1 0 0 1-1.5.86l-11-6.8a1 1 0 0 1 0-1.72l11-6.8A1 1 0 0 1 16 5.2z" fill="currentColor"/></svg>',
     next: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     retry: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4v4.5H9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    yes: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    no: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/></svg>',
+    eye: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg>',
   };
 
   const PHRASES = [
@@ -260,7 +298,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
   /* ---------- estado ---------- */
   // fases: 1 gravar, 2 ouvir ao contrário, 3 imitar, 4 resultado
-  const S = { step: 1, score: null, orig: null, origrev: null, imit: null, result: null };
+  const S = { mode: null, step: 1, score: null, orig: null, origrev: null, imit: null, result: null, turn: 0, scores: [0, 0] };
 
   const buzz = (ms) => { try { navigator.vibrate && navigator.vibrate(ms || 8); } catch (e) {} };
   let toastT = 0;
@@ -408,7 +446,11 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
       buzz(20);
       if (slot === "orig") {
         S.orig = clip; S.origrev = reversed(clip); S.imit = S.result = null; S.score = null;
+        if (S.mode === "duo") { go(2); return; }
         go(2); setTimeout(() => { if (S.step === 2) play("origrev"); }, 450);
+      } else if (S.mode === "duo") {
+        S.imit = clip; S.result = reversed(clip);
+        go(5); setTimeout(() => { if (S.step === 5) play("result"); }, 450);
       } else {
         S.imit = clip; S.result = reversed(clip);
         let n = 0; try { n = similarity(S.orig, S.result); } catch (e) {}
@@ -452,11 +494,94 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
   function go(step) { S.step = step; buzz(); render(); }
 
+  const THEME = { rec: "#FF5B2E", listen: "#2E2BF5", result: "#FFE14A", dark: "#170A05" };
+  function setPhase(ph) {
+    root.dataset.phase = ph;
+    try { document.querySelector('meta[name="theme-color"]').content = THEME[ph]; } catch (e) {}
+  }
+  const isPlaying = (k) => playing && playing.key === k;
+  const P = (n) => "Jogador " + (n + 1);
+
   function render() {
-    const st = S.step, isPlaying = (k) => playing && playing.key === k;
-    root.dataset.phase = st === 2 ? "listen" : st === 4 ? "result" : "rec";
-    try { document.querySelector('meta[name="theme-color"]').content = st === 2 ? "#2E2BF5" : st === 4 ? "#FFE14A" : "#FF5B2E"; } catch (e) {}
-    $("dots").querySelectorAll("i").forEach((d, i) => { d.className = i + 1 === st ? "now" : i + 1 < st ? "done" : ""; });
+    if (!S.mode) return;
+    const duo = S.mode === "duo", st = S.step, total = duo ? 6 : 4;
+    setPhase(duo ? { 1: "rec", 2: "dark", 3: "listen", 4: "rec", 5: "result", 6: "dark" }[st] : { 1: "rec", 2: "listen", 3: "rec", 4: "result" }[st]);
+    const dots = $("dots");
+    if (dots.children.length !== total) dots.innerHTML = "<i></i>".repeat(total);
+    dots.querySelectorAll("i").forEach((d, i) => { d.className = i + 1 === st ? "now" : i + 1 < st ? "done" : ""; });
+    $("tally").hidden = !duo;
+    if (duo) $("tally").textContent = "J1 " + S.scores[0] + " · " + S.scores[1] + " J2";
+    $("home-btn").hidden = !!rec;
+    $("left").innerHTML = ""; $("right").innerHTML = ""; $("big-slot").innerHTML = ""; $("hint").innerHTML = "";
+    if (duo) renderDuo(); else renderSolo();
+  }
+
+  function setWords(kicker, title) {
+    const k = $("kicker"), ph = $("phrase");
+    k.hidden = !kicker; k.textContent = kicker || "";
+    ph.hidden = false;
+    if (ph.textContent !== title) { ph.textContent = title; ph.classList.remove("flip"); void ph.offsetWidth; ph.classList.add("flip"); }
+    lastPhraseMode = "duo";
+    $("shuffle").hidden = true; $("score").hidden = true;
+  }
+
+  function renderDuo() {
+    const st = S.step, a = S.turn, b = 1 - S.turn;
+    const left = $("left"), right = $("right"), slot = $("big-slot"), hint = $("hint");
+    if (st === 1) {
+      setWords(P(a) + " · em segredo", "Grava o que quiseres");
+      slot.append(bigButton(rec ? "stop" : "rec", rec ? "Parar" : "Gravar", toggleMic));
+      if (!rec) hint.textContent = "O " + P(b) + " não pode ouvir";
+    }
+    if (st === 2) {
+      setWords("Gravado", "Passa o telemóvel ao " + P(b));
+      slot.append(bigButton("next", "Estou pronto", () => go(3)));
+      left.append(mini("retry", "Regravar", () => { S.orig = S.origrev = null; go(1); }));
+      hint.textContent = "Toca quando estiveres pronto";
+    }
+    if (st === 3) {
+      setWords(P(b), "Ouve ao contrário");
+      slot.append(bigButton(isPlaying("origrev") ? "stop" : "back", "Ouvir ao contrário", () => play("origrev")));
+      right.append(mini("next", "Imitar", () => { stopPlay(); go(4); }));
+      hint.textContent = isPlaying("origrev") ? "A tocar ao contrário" : "Ouve as vezes que quiseres";
+    }
+    if (st === 4) {
+      setWords(P(b), "Agora imita");
+      slot.append(bigButton(rec ? "stop" : "rec", rec ? "Parar" : "Gravar", toggleMic));
+      if (!rec) {
+        left.append(mini("back", "Ouvir", () => play("origrev"), isPlaying("origrev")));
+        hint.textContent = isPlaying("origrev") ? "A tocar ao contrário" : micOK ? "Toca para gravar" : "Escolhe um áudio";
+      }
+    }
+    if (st === 5) {
+      setWords(P(b) + ", adivinha", "O que era?");
+      slot.append(bigButton(isPlaying("result") ? "stop" : "play", "Ouvir a imitação ao contrário", () => play("result")));
+      left.append(mini("retry", "Imitar outra vez", () => { stopPlay(); S.imit = S.result = null; go(4); }));
+      right.append(mini("eye", "Revelar", () => { stopPlay(); go(6); setTimeout(() => { if (S.step === 6) play("orig"); }, 350); }));
+      hint.textContent = isPlaying("result") ? "A tua imitação, ao contrário" : "Diz em voz alta e depois revela";
+    }
+    if (st === 6) {
+      setWords("Era isto", "Acertou?");
+      slot.append(bigButton(isPlaying("orig") ? "stop" : "play", "Ouvir o original", () => play("orig")));
+      left.append(mini("no", "Falhou", () => endRound(false)));
+      right.append(mini("yes", "Acertou", () => endRound(true)));
+      hint.textContent = isPlaying("orig") ? "O original" : "";
+    }
+  }
+
+  function endRound(hit) {
+    stopPlay();
+    const b = 1 - S.turn;
+    if (hit) S.scores[b]++;
+    buzz(hit ? 30 : 10);
+    toast(hit ? "Ponto para o " + P(b) + "!" : "Sem ponto desta vez.", 2500);
+    S.turn = b;
+    S.orig = S.origrev = S.imit = S.result = null;
+    go(1);
+  }
+
+  function renderSolo() {
+    const st = S.step;
 
     const phrase = PHRASES[pIdx];
     const mode = st === 1 ? "fwd" : "rev";
@@ -500,6 +625,38 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   }
 
   function restart() { stopPlay(); S.orig = S.origrev = S.imit = S.result = null; S.score = null; go(1); }
+
+  /* ---------- início e modos ---------- */
+  function showHome() {
+    if (rec) return;
+    stopPlay();
+    S.mode = null;
+    $("app").hidden = true; $("home").hidden = false;
+    setPhase("dark");
+  }
+  function startMode(m) {
+    audio(); buzz();
+    S.mode = m; S.step = 1; S.score = null; S.turn = 0; S.scores = [0, 0];
+    S.orig = S.origrev = S.imit = S.result = null;
+    lastPhraseMode = "start";
+    $("home").hidden = true; $("app").hidden = false;
+    render(); drawRing();
+  }
+  $("start-duo").addEventListener("click", () => startMode("duo"));
+  $("start-solo").addEventListener("click", () => startMode("solo"));
+  $("home-btn").addEventListener("click", showHome);
+  const HELP = {
+    solo: [["#FF5B2E", "Grava a frase"], ["#2E2BF5", "Ouve-a ao contrário"], ["#FF5B2E", "Imita o que ouviste"], ["#170A05", "Ouve a tua imitação ao contrário"]],
+    duo: [["#FF5B2E", "Um grava em segredo o que quiser"], ["#2E2BF5", "O outro ouve isso ao contrário"], ["#FF5B2E", "E imita o que ouviu"], ["#170A05", "A imitação toca ao contrário. Adivinha o que era!"]],
+  };
+  function fillHelp() {
+    const ol = $("help-list"); ol.innerHTML = "";
+    HELP[S.mode === "duo" ? "duo" : "solo"].forEach(([c, t], i) => {
+      const li = document.createElement("li"), b = document.createElement("b");
+      b.style.background = c; b.textContent = String(i + 1);
+      li.append(b, t); ol.append(li);
+    });
+  }
   function shuffle() {
     let n; do { n = Math.floor(Math.random() * PHRASES.length); } while (n === pIdx);
     pIdx = n; buzz();
@@ -621,7 +778,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   $("mic-call").addEventListener("change", (e) => { callMode = e.target.checked; store.set("cac-call", callMode ? "1" : "0"); if (test) startTest(micId); });
   $("mic").hidden = !micOK;
 
-  $("help").addEventListener("click", () => { $("sheet").hidden = false; $("sheet-ok").focus(); });
+  $("help").addEventListener("click", () => { fillHelp(); $("sheet").hidden = false; $("sheet-ok").focus(); });
   $("sheet-ok").addEventListener("click", () => { $("sheet").hidden = true; });
   $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sheet").hidden = true; });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") { $("sheet").hidden = true; if (!$("micsheet").hidden) closeMicSheet(); } });
@@ -707,7 +864,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     return Math.round(100 * Math.pow(s, 0.85));
   }
 
-  render();
+  showHome();
   drawRing();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawRing);
 })();
