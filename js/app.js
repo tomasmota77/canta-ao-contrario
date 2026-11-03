@@ -76,7 +76,8 @@
     home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v8.5a.5.5 0 0 1-.5.5H15v-6H9v6H4.5a.5.5 0 0 1-.5-.5z" fill="currentColor"/></svg>',
     x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
   };
-  const PLAYER_COLORS = ["#FF5B2E", "#7C78FF", "#FFE14A", "#3DDC97", "#FF8FC7", "#4CC9F0", "#B79CFF", "#FFA24C"];
+  const PLAYER_COLORS = ["#FF5B2E", "#3B37F0", "#F5B700", "#1DB954", "#FF4FA3", "#00A6D6", "#8E5CF7", "#FF8A1F"];
+  const EMOJIS = ["🦊", "🐸", "🐼", "🦄", "🐙", "🐯", "🐵", "🐧", "🦁", "🐨", "🐷", "🐰"];
 
   let PHRASES = [];
   let pIdx = 0;
@@ -209,7 +210,7 @@
     const g = cv.getContext("2d");
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, W, H);
-    const fg = getComputedStyle(root).getPropertyValue("--fg").trim() || "#000";
+    const fg = getComputedStyle(root).getPropertyValue("--phase").trim() || "#FF5B2E";
     const cx = W / 2, cy = H / 2, r0 = W * 0.27;
     g.strokeStyle = fg; g.lineCap = "round";
     if (ringMode !== "idle" && analyser) {
@@ -381,80 +382,99 @@
   let lastPhraseMode = "fwd";
   function go(step) { S.step = step; buzz(); render(); }
 
-  const THEME = { rec: "#FF5B2E", listen: "#2E2BF5", result: "#FFE14A", dark: "#170A05" };
+  const darkScheme = window.matchMedia ? matchMedia("(prefers-color-scheme: dark)") : null;
   function setPhase(ph) {
     root.dataset.phase = ph;
-    try { document.querySelector('meta[name="theme-color"]').content = THEME[ph]; } catch (e) {}
-    if (NATIVE && PLUG.StatusBar) { try { PLUG.StatusBar.setStyle({ style: ph === "listen" || ph === "dark" ? "DARK" : "LIGHT" }); } catch (e) {} }
+    if (NATIVE && PLUG.StatusBar) { try { PLUG.StatusBar.setStyle({ style: darkScheme && darkScheme.matches ? "DARK" : "LIGHT" }); } catch (e) {} }
   }
   const isPlaying = (k) => playing && playing.key === k;
   const pName = (i) => (S.players[i] && S.players[i].name) || t("player", { n: i + 1 });
   const totalRounds = () => S.players.length * S.rpp;
 
+  function avatar(i, size) {
+    const p = S.players[i] || {};
+    const el = document.createElement("span");
+    el.className = "av" + (size ? " " + size : "");
+    el.style.setProperty("--c", PLAYER_COLORS[i % PLAYER_COLORS.length]);
+    el.textContent = p.emoji || EMOJIS[i % EMOJIS.length];
+    el.setAttribute("aria-hidden", "true");
+    return el;
+  }
+  function setWho(i, extra) {
+    const w = $("who"); w.innerHTML = ""; w.hidden = false;
+    const nm = document.createElement("span"); nm.textContent = extra || pName(i);
+    w.append(avatar(i), nm);
+  }
+  function setHero(i, cls) {
+    const h = $("hero"); h.innerHTML = ""; h.hidden = false;
+    const a = avatar(i, "lg"); if (cls) a.classList.add(cls);
+    h.append(a);
+  }
+  function ctaBtn(label, kind, onClick, icon) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "btn " + kind;
+    b.innerHTML = (icon ? ICON[icon] : "") + "<span></span>";
+    b.lastChild.textContent = label;
+    b.addEventListener("click", () => { sfx("tap"); onClick(); });
+    return b;
+  }
+
   function render() {
     if (!S.mode) return;
     const duo = S.mode === "duo", st = S.step;
-    const phase = duo ? { 1: "rec", 2: "dark", 3: "listen", 4: "rec", 5: "result", 6: "dark", 7: "result" }[st] : { 1: "rec", 2: "listen", 3: "rec", 4: "result" }[st];
-    setPhase(phase);
+    setPhase(duo ? { 1: "rec", 2: "dark", 3: "listen", 4: "rec", 5: "result", 6: "dark", 7: "result" }[st] : { 1: "rec", 2: "listen", 3: "rec", 4: "result" }[st]);
     const dots = $("dots");
     if (!duo) {
       if (dots.children.length !== 4) dots.innerHTML = "<i></i>".repeat(4);
       dots.querySelectorAll("i").forEach((d, i) => { d.className = i + 1 === st ? "now" : i + 1 < st ? "done" : ""; });
     }
-    $("dots").hidden = duo; $("tally").hidden = !duo || st === 7;
-    if (duo) $("tally").innerHTML = "<small>" + t("round") + "</small>" + Math.min(S.round + 1, totalRounds()) + "<i>/</i>" + totalRounds();
-    $("home-btn").hidden = !!rec;
-    $("left").innerHTML = ""; $("right").innerHTML = ""; $("big-slot").innerHTML = ""; $("hint").innerHTML = "";
-    $("rank").hidden = true; $("share-btn").hidden = true; $("speed").hidden = true;
+    dots.hidden = duo; $("tally").hidden = !duo || st === 7;
+    if (duo) $("tally").textContent = t("roundOf", { r: Math.min(S.round + 1, totalRounds()), n: totalRounds() });
+    $("home-btn").style.visibility = rec ? "hidden" : "visible";
+    $("stage").classList.remove("centered");
+    ["left", "right", "big-slot", "hint", "cta"].forEach((id) => { $(id).innerHTML = ""; });
+    ["rank", "share-btn", "speed", "hero", "who", "score"].forEach((id) => { $(id).hidden = true; });
+    $("shuffle").hidden = true;
+    $("app").classList.remove("no-controls");
     if (duo) renderDuo(); else renderSolo();
   }
 
   function setWords(kicker, title) {
     const k = $("kicker"), ph = $("phrase");
     k.hidden = !kicker; k.textContent = kicker || "";
-    ph.hidden = false;
-    if (ph.textContent !== title) { ph.textContent = title; ph.classList.remove("flip"); void ph.offsetWidth; ph.classList.add("flip"); }
+    ph.hidden = !title;
+    if (title && ph.textContent !== title) { ph.textContent = title; ph.classList.remove("flip"); void ph.offsetWidth; ph.classList.add("flip"); }
     lastPhraseMode = "duo";
-    $("shuffle").hidden = true; $("score").hidden = true;
   }
   function showSpeed() {
     const b = $("speed"); b.hidden = !!rec;
     b.setAttribute("aria-pressed", String(slow));
-    $("speed-label").textContent = slow ? "0.75×" : "1×";
-  }
-  function choiceRow(items) {
-    const row = document.createElement("div"); row.className = "choices";
-    items.forEach(([cls, icon, label, fn]) => {
-      const c = document.createElement("button"); c.type = "button"; c.className = "choice " + cls;
-      c.innerHTML = ICON[icon] + "<span></span>"; c.lastChild.textContent = label;
-      c.addEventListener("click", fn); row.append(c);
-    });
-    return row;
   }
 
   function renderDuo() {
     const st = S.step, N = S.players.length, a = S.round % N, b = (S.round + 1) % N;
-    const left = $("left"), right = $("right"), slot = $("big-slot"), hint = $("hint");
+    const left = $("left"), right = $("right"), slot = $("big-slot"), hint = $("hint"), cta = $("cta");
     if (st === 1) {
-      setWords(t("secret", { p: pName(a) }), t("recAnything"));
+      setWho(a, t("secret", { p: pName(a) }));
+      setWords("", t("recAnything"));
       slot.append(bigButton(rec ? "stop" : "rec", rec ? t("stop") : t("rec"), toggleMic));
-      if (!rec) hint.textContent = t("cantHear", { p: pName(b) });
+      if (!rec) hint.textContent = "🙉 " + t("cantHear", { p: pName(b) });
     }
     if (st === 2) {
+      $("app").classList.add("no-controls"); $("stage").classList.add("centered");
+      setHero(b);
       setWords(t("passK"), pName(b));
-      slot.append(bigButton("next", t("ready"), () => { sfx("go"); go(3); }));
-      left.append(mini("retry", t("rerecord"), () => { S.orig = S.origrev = null; go(1); }));
-      hint.textContent = t("tapReady");
+      cta.append(ctaBtn(t("ready"), "primary", () => { sfx("go"); go(3); }));
+      cta.append(ctaBtn(t("rerecord"), "text", () => { S.orig = S.origrev = null; go(1); }));
     }
     if (st === 3) {
-      setWords(pName(b), t("listenBack"));
-      showSpeed();
+      setWho(b); setWords("", t("listenBack")); showSpeed();
       slot.append(bigButton(isPlaying("origrev") ? "stop" : "back", t("listenRev"), () => play("origrev")));
-      right.append(mini("next", t("imitate"), () => { stopPlay(); go(4); }));
       hint.textContent = isPlaying("origrev") ? t("playingRev") : t("listenAny");
+      cta.append(ctaBtn(t("imitate"), "primary", () => { stopPlay(); go(4); }, "next"));
     }
     if (st === 4) {
-      setWords(pName(b), t("nowImitate"));
+      setWho(b); setWords("", t("nowImitate"));
       slot.append(bigButton(rec ? "stop" : "rec", rec ? t("stop") : t("rec"), toggleMic));
       if (!rec) {
         showSpeed();
@@ -463,39 +483,47 @@
       }
     }
     if (st === 5) {
-      setWords(t("guessK", { p: pName(b) }), t("whatWas"));
+      setWho(b, t("guessK", { p: pName(b) })); setWords("", t("whatWas"));
       slot.append(bigButton(isPlaying("result") ? "stop" : "play", t("listenImit"), () => play("result")));
       left.append(mini("retry", t("imitateAgain"), () => { stopPlay(); S.imit = S.result = null; go(4); }));
-      right.append(mini("eye", t("reveal"), reveal));
       hint.textContent = isPlaying("result") ? t("yourImitRev") : t("sayAloud");
+      cta.append(ctaBtn(t("reveal"), "primary", reveal, "eye"));
     }
     if (st === 6) {
-      if (S.revealing) { setWords(t("itWas"), "…"); $("phrase").classList.add("pulse"); return; }
-      $("phrase").classList.remove("pulse");
-      setWords(t("itWas"), t("gotIt"));
+      if (S.revealing) {
+        $("app").classList.add("no-controls"); $("stage").classList.add("centered");
+        setHero(a, "pulse"); setWords(t("itWas"), "…");
+        return;
+      }
+      setHero(a);
+      setWords(t("itWas") + " · " + pName(a), t("gotIt"));
       $("share-btn").hidden = false;
       slot.append(bigButton(isPlaying("orig") ? "stop" : "play", t("listenOrig"), () => play("orig")));
-      hint.append(choiceRow([["no", "no", t("miss"), () => endRound(false)], ["yes", "yes", t("hit"), () => endRound(true)]]));
+      const row = document.createElement("div"); row.className = "row";
+      row.append(ctaBtn(t("miss"), "neutral", () => endRound(false), "no"), ctaBtn(t("hit"), "success", () => endRound(true), "yes"));
+      cta.append(row);
     }
     if (st === 7) {
+      $("app").classList.add("no-controls"); $("stage").classList.add("centered");
       const top = Math.max(...S.players.map((p) => p.score));
-      const winners = S.players.filter((p) => p.score === top);
+      const winners = S.players.map((p, i) => ({ ...p, i })).filter((p) => p.score === top);
+      if (top > 0) setHero(winners[0].i, "crown");
       if (top === 0) setWords("", t("nobody"));
       else if (winners.length > 1) setWords(t("tie"), winners.map((p) => p.name).join(" & "));
       else setWords(t("winner"), winners[0].name);
       const rank = $("rank"); rank.innerHTML = ""; rank.hidden = false;
-      S.players.map((p, i) => ({ ...p, i })).sort((x, y) => y.score - x.score).forEach((p) => {
+      S.players.map((p, i) => ({ ...p, i })).sort((x, y) => y.score - x.score).forEach((p, k) => {
         const li = document.createElement("li");
-        const nm = document.createElement("span"); nm.className = "rk-name";
-        const dot = document.createElement("i"); dot.style.background = PLAYER_COLORS[p.i % PLAYER_COLORS.length];
-        nm.append(dot, p.name);
-        const sc = document.createElement("b"); sc.textContent = String(p.score);
         if (p.score === top && top > 0) li.className = "top";
-        li.append(nm, sc); rank.append(li);
+        const pos = document.createElement("span"); pos.className = "pos"; pos.textContent = String(k + 1);
+        const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = p.name;
+        const sc = document.createElement("b"); sc.textContent = String(p.score);
+        li.append(pos, avatar(p.i), nm, sc); rank.append(li);
       });
-      slot.append(bigButton("retry", t("playAgain"), () => { sfx("go"); startDuo(); }));
-      left.append(mini("people", t("players"), () => showSetup()));
-      right.append(mini("home", t("home"), () => showHome()));
+      cta.append(ctaBtn(t("playAgain"), "primary", () => { sfx("go"); startDuo(); }, "retry"));
+      const row = document.createElement("div"); row.className = "row";
+      row.append(ctaBtn(t("players"), "neutral", () => showSetup(), "people"), ctaBtn(t("home"), "neutral", () => showHome(), "home"));
+      cta.append(row);
     }
   }
 
@@ -513,7 +541,7 @@
   function endRound(hit) {
     stopPlay();
     const N = S.players.length, b = (S.round + 1) % N;
-    if (hit) { S.players[b].score++; sfx("win"); confetti(120); buzz(30); toast(t("pointFor", { p: pName(b) }), 2200); }
+    if (hit) { S.players[b].score++; sfx("win"); confetti(120); buzz(30); toast(S.players[b].emoji + "  " + t("pointFor", { p: pName(b) }), 2200); }
     else { sfx("lose"); buzz(10); toast(t("noPoint"), 2200); }
     S.round++;
     S.orig = S.origrev = S.imit = S.result = null;
@@ -537,7 +565,7 @@
     $("kicker").hidden = st === 4;
     $("shuffle").hidden = st !== 1 || !!rec;
     $("score").hidden = st !== 4;
-    const left = $("left"), right = $("right"), slot = $("big-slot"), hint = $("hint");
+    const left = $("left"), right = $("right"), slot = $("big-slot"), hint = $("hint"), cta = $("cta");
     if (st === 1 || st === 3) {
       slot.append(bigButton(rec ? "stop" : "rec", rec ? t("stop") : t("rec"), toggleMic));
       if (st === 3 && !rec) { showSpeed(); left.append(mini("back", t("listen"), () => play("origrev"), isPlaying("origrev"))); }
@@ -547,18 +575,15 @@
       showSpeed();
       slot.append(bigButton(isPlaying("origrev") ? "stop" : "back", t("listenRev"), () => play("origrev")));
       left.append(mini("play", t("original"), () => play("orig"), isPlaying("orig")));
-      right.append(mini("next", t("imitate"), () => { stopPlay(); go(3); }));
       hint.textContent = isPlaying("origrev") ? t("playingRev") : isPlaying("orig") ? t("playingOrig") : t("listenAny");
+      cta.append(ctaBtn(t("imitate"), "primary", () => { stopPlay(); go(3); }, "next"));
     }
     if (st === 4) {
       $("share-btn").hidden = false;
       slot.append(bigButton(isPlaying("result") ? "stop" : "play", t("resultAria"), () => play("result")));
       left.append(mini("play", t("original"), () => play("orig"), isPlaying("orig")));
       right.append(mini("retry", t("retry"), () => { stopPlay(); S.imit = S.result = null; S.score = null; go(3); }));
-      const nb = document.createElement("button");
-      nb.type = "button"; nb.className = "pill"; nb.textContent = t("newPhrase");
-      nb.addEventListener("click", () => { sfx("tap"); restart(); shuffle(); });
-      hint.append(nb);
+      cta.append(ctaBtn(t("newPhrase"), "primary", () => { restart(); shuffle(); }));
     }
   }
 
@@ -573,7 +598,7 @@
     stopPlay();
     S.mode = null;
     showOnly("home");
-    setPhase("dark");
+    setPhase("rec");
   }
   function startSolo() {
     audio(); buzz(); sfx("go");
@@ -593,52 +618,69 @@
     render(); drawRing();
   }
 
-  let setupNames = (() => {
-    try { const p = JSON.parse(store.get("cac-players") || "null"); if (Array.isArray(p) && p.length >= 2) return p.slice(0, 8).map(String); } catch (e) {}
-    return ["", ""];
+  // Jogadores guardados: [{ name, emoji }]
+  let roster = (() => {
+    try {
+      const p = JSON.parse(store.get("cac-roster") || "null");
+      if (Array.isArray(p) && p.length >= 2) return p.slice(0, 8).map((x, i) => ({ name: String(x.name || ""), emoji: EMOJIS.includes(x.emoji) ? x.emoji : EMOJIS[i] }));
+    } catch (e) {}
+    try {
+      const old = JSON.parse(store.get("cac-players") || "null");
+      if (Array.isArray(old) && old.length >= 2) return old.slice(0, 8).map((n, i) => ({ name: String(n), emoji: EMOJIS[i] }));
+    } catch (e) {}
+    return [{ name: "", emoji: EMOJIS[0] }, { name: "", emoji: EMOJIS[1] }];
   })();
-  function saveNames() { store.set("cac-players", JSON.stringify(setupNames)); }
+  function saveRoster() { store.set("cac-roster", JSON.stringify(roster)); }
   function showSetup() {
     if (rec) return;
     stopPlay(); audio();
     S.mode = null;
     showOnly("setup");
-    setPhase("dark");
+    setPhase("rec");
     renderSetup();
+  }
+  function nextEmoji(cur) {
+    const used = new Set(roster.map((r) => r.emoji));
+    for (let k = 1; k <= EMOJIS.length; k++) { const e = EMOJIS[(EMOJIS.indexOf(cur) + k) % EMOJIS.length]; if (!used.has(e)) return e; }
+    return cur;
   }
   function renderSetup() {
     const list = $("players"); list.innerHTML = "";
-    setupNames.forEach((name, i) => {
+    roster.forEach((p, i) => {
       const row = document.createElement("div"); row.className = "player-row";
-      const dot = document.createElement("span"); dot.className = "pdot"; dot.style.background = PLAYER_COLORS[i % PLAYER_COLORS.length];
+      const avb = document.createElement("button"); avb.type = "button"; avb.className = "av-btn";
+      avb.setAttribute("aria-label", t("changeAvatar", { p: p.name || t("player", { n: i + 1 }) }));
+      const av = document.createElement("span"); av.className = "av md"; av.style.setProperty("--c", PLAYER_COLORS[i % PLAYER_COLORS.length]); av.textContent = p.emoji;
+      avb.append(av);
+      avb.addEventListener("click", () => { sfx("tap"); buzz(); p.emoji = nextEmoji(p.emoji); saveRoster(); av.textContent = p.emoji; });
       const inp = document.createElement("input");
-      inp.type = "text"; inp.maxLength = 16; inp.id = "pname-" + i; inp.value = name;
+      inp.type = "text"; inp.maxLength = 16; inp.id = "pname-" + i; inp.value = p.name;
       inp.placeholder = t("player", { n: i + 1 }); inp.setAttribute("aria-label", t("player", { n: i + 1 }));
       inp.autocomplete = "off"; inp.enterKeyHint = "next";
-      inp.addEventListener("input", () => { setupNames[i] = inp.value; saveNames(); });
+      inp.addEventListener("input", () => { p.name = inp.value; saveRoster(); });
       inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { const nx = $("pname-" + (i + 1)); if (nx) nx.focus(); else inp.blur(); } });
-      row.append(dot, inp);
-      if (setupNames.length > 2) {
+      row.append(avb, inp);
+      if (roster.length > 2) {
         const x = document.createElement("button"); x.type = "button"; x.className = "x"; x.innerHTML = ICON.x;
         x.setAttribute("aria-label", t("removePlayer"));
-        x.addEventListener("click", () => { sfx("tap"); setupNames.splice(i, 1); saveNames(); renderSetup(); });
+        x.addEventListener("click", () => { sfx("tap"); roster.splice(i, 1); saveRoster(); renderSetup(); });
         row.append(x);
       }
       list.append(row);
     });
-    $("add-player").hidden = setupNames.length >= 8;
+    $("add-player").hidden = roster.length >= 8;
     document.querySelectorAll("#rounds-seg button").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.r) === S.rpp)));
   }
   $("add-player").addEventListener("click", () => {
-    if (setupNames.length >= 8) return;
-    sfx("tap"); setupNames.push(""); saveNames(); renderSetup();
-    const last = $("pname-" + (setupNames.length - 1)); if (last) last.focus();
+    if (roster.length >= 8) return;
+    sfx("tap"); roster.push({ name: "", emoji: nextEmoji(EMOJIS[roster.length % EMOJIS.length]) }); saveRoster(); renderSetup();
+    const last = $("pname-" + (roster.length - 1)); if (last) last.focus();
   });
   document.querySelectorAll("#rounds-seg button").forEach((b) => b.addEventListener("click", () => {
     sfx("tap"); S.rpp = Number(b.dataset.r); store.set("cac-rpp", String(S.rpp)); renderSetup();
   }));
   $("setup-go").addEventListener("click", () => {
-    S.players = setupNames.map((n, i) => ({ name: n.trim() || t("player", { n: i + 1 }), score: 0 }));
+    S.players = roster.map((p, i) => ({ name: p.name.trim() || t("player", { n: i + 1 }), emoji: p.emoji, score: 0 }));
     sfx("go"); startDuo();
   });
   $("setup-back").addEventListener("click", () => { sfx("tap"); showHome(); });
@@ -652,8 +694,8 @@
   });
 
   const HELP = {
-    solo: [["#FF5B2E", "h_s1"], ["#2E2BF5", "h_s2"], ["#FF5B2E", "h_s3"], ["#170A05", "h_s4"]],
-    duo: [["#FF5B2E", "h_d1"], ["#2E2BF5", "h_d2"], ["#FF5B2E", "h_d3"], ["#170A05", "h_d4"]],
+    solo: [["#FF5B2E", "h_s1"], ["#3B37F0", "h_s2"], ["#FF5B2E", "h_s3"], ["#16141C", "h_s4"]],
+    duo: [["#FF5B2E", "h_d1"], ["#3B37F0", "h_d2"], ["#FF5B2E", "h_d3"], ["#1DB954", "h_d4"]],
   };
   function fillHelp() {
     const ol = $("help-list"); ol.innerHTML = "";
@@ -675,6 +717,8 @@
   function countUp(n) {
     $("verdict").textContent = VERDICT(n);
     const t0 = performance.now(), D = 1100, el = $("score-num");
+    $("meter").style.width = "0%";
+    requestAnimationFrame(() => requestAnimationFrame(() => { $("meter").style.width = n + "%"; }));
     const tick = (now) => {
       const f = Math.min(1, Math.max(0, (now - t0) / D)), e = 1 - Math.pow(1 - f, 4);
       el.textContent = String(Math.round(n * e));
@@ -685,7 +729,7 @@
   function readBest() { return Number(store.get("cac-best") || 0); }
   function saveBest(n) {
     const b = readBest();
-    if (n > b) { store.set("cac-best", String(n)); $("best").textContent = b ? t("newBest") : ""; }
+    if (n > b) { store.set("cac-best", String(n)); $("best").textContent = b ? "🏆 " + t("newBest") : ""; }
     else $("best").textContent = t("best", { n: b });
   }
 

@@ -1,9 +1,9 @@
 /* Guarda o jogo no telemóvel para funcionar sem internet. Muda VERSION a cada publicação. */
-const VERSION = "cac-v9";
+const VERSION = "cac-v10";
 const SHELL = [
   "./", "index.html", "privacy.html", "manifest.webmanifest",
   "js/i18n.js", "js/score.js", "js/app.js",
-  "fonts/fonts.css", "fonts/funnel-display-latin.woff2", "fonts/funnel-display-latin-ext.woff2",
+  "fonts/fonts.css", "fonts/rubik.css", "fonts/rubik-latin.woff2", "fonts/rubik-latin-ext.woff2", "fonts/funnel-display-latin.woff2", "fonts/funnel-display-latin-ext.woff2",
   "fonts/funnel-sans-latin.woff2", "fonts/funnel-sans-latin-ext.woff2",
   "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png", "icons/favicon-48.png",
 ];
