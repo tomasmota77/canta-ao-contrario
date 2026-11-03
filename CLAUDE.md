@@ -14,7 +14,7 @@ Jogo de festa para telemóvel: grava-se uma frase, ouve-se ao contrário, imita-
   Qualquer texto novo tem de existir nas 7.
 - `js/score.js`: pontuação (bandas mel + DTW), `window.CAC_similarity`.
 - `sw.js`: modo sem internet. **Aumenta `VERSION` sempre que publicares.**
-- `fonts/`: Funnel Display e Funnel Sans alojadas localmente (OFL).
+- `fonts/`: Rubik (letra da interface) e Funnel Display/Sans (só no vídeo partilhado), alojadas localmente (OFL).
 - `icons/`, `manifest.webmanifest`, `privacy.html` (7 línguas).
 - `app/`: projeto Capacitor (Android e iOS). `npm run sync` copia o site para `app/www`.
 - `store/`: textos da loja, capturas (geradas com Playwright), vídeos de demonstração, imagem de destaque.
@@ -24,14 +24,25 @@ Jogo de festa para telemóvel: grava-se uma frase, ouve-se ao contrário, imita-
 - Sozinho: 1 gravar → 2 ouvir ao contrário → 3 imitar → 4 nota (0–100) + partilhar.
 - Adivinha (2–8 jogadores, 1–3 rondas cada): 1 grava em segredo → 2 passa o telemóvel → 3 ouve ao contrário →
   4 imita → 5 "O que era?" → 6 revelar (rufar de tambores) → Acertou/Falhou → … → 7 vencedor.
-- Cores por fase em `:root[data-phase]`: `rec` laranja #FF5B2E, `listen` azul #2E2BF5,
-  `result` amarelo #FFE14A, `dark` #170A05.
+- Jogadores com avatar de bicho (emoji), guardados em `localStorage` `cac-roster`.
 
-## Estado atual e próximo passo
+## Sistema de design (não quebrar)
 
-O dono acha que o design ainda parece "feito por IA" e quer um **redesenho completo da interface**
-usando a skill `mobile-app-ui-design` (e boas práticas das Human Interface Guidelines da Apple e do
-Material Design). Mantém o funcionamento, os 7 idiomas, a acessibilidade e o modo sem internet.
+- 60/30/10: fundo neutro `--bg` e cartões `--card` (claro e escuro automáticos), tinta `--ink`,
+  e a cor da fase (`--phase`) só no botão central, no brilho por trás e no anel de som.
+  Fases em `:root[data-phase]`: `rec` laranja, `listen` azul, `result` tinta, `dark` verde.
+- Uma família (Rubik), 4 tamanhos (`--fs-cap`, `--fs-body`, `--fs-title`, `--fs-display`) relativos ao
+  tamanho de letra do sistema (Dynamic Type), 2 pesos (600 e 800). Grelha de 8 pontos.
+- Texto branco só sobre `--brand-btn`, `--ok-btn` ou `--rev` (contraste ≥ 4,5:1); texto laranja usa `--brand-text`.
+- Um botão principal (`.btn.primary`) por ecrã, em baixo, na zona do polegar (`#cta`).
+- Alvos de toque ≥ 44 pontos; alturas com `min-height` para crescerem com a letra.
+
+## Estado atual
+
+Redesenho feito com as skills `mobile-app-ui-design` e `ios-review`. Da revisão iOS ficaram por fazer
+(o dono escolheu só contraste e letra): confirmar antes de sair de uma partida, chips e seletor de rondas
+com 44 pontos, "Cancelar"/"Agora não" nas folhas de língua e do microfone, mensagem curta para
+microfone recusado (diferente na app e no site), nomes com maiúscula automática e sem corretor.
 
 ## Como testar
 
