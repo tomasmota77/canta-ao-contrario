@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#FF5B2E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Contrário">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23FF5B2E'/%3E%3Ccircle cx='50' cy='50' r='26' fill='white'/%3E%3Ccircle cx='50' cy='50' r='10' fill='%23FF5B2E'/%3E%3C/svg%3E">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);box-sizing:border-box;height:100%}</style>
+<title>Canta ao Contrário</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500;800&family=Funnel+Sans:wght@500;600;700&display=swap">
+<style>
+/* Layout: um ecrã por fase, cor inteira. Frase grande em cima, um botão central que reage ao som, dois botões pequenos ao lado. Visual único por fase (não segue o tema claro/escuro, de propósito). */
+:root {
+  color-scheme: light;
+  --tomato: #FF5B2E;
+  --ultra: #2E2BF5;
+  --butter: #FFE14A;
+  --ink: #170A05;
+  --white: #FFFFFF;
+  --bg: var(--tomato);
+  --fg: var(--ink);
+  --display: "Funnel Display", "Arial Black", system-ui, sans-serif;
+  --ui: "Funnel Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+:root[data-phase="listen"] { --bg: var(--ultra); --fg: var(--white); }
+:root[data-phase="result"] { --bg: var(--butter); --fg: var(--ink); }
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--ui);
+  transition: background-color .45s ease, color .45s ease;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+.app {
+  height: 100%;
+  max-width: 480px; margin: 0 auto;
+  display: grid; grid-template-rows: auto 1fr auto auto;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+  padding-block: 16px 22px;
+}
+
+/* topo */
+.bar { display: flex; align-items: center; justify-content: space-between; height: 40px; }
+.dots { display: flex; gap: 6px; }
+.dots i { width: 8px; height: 8px; border-radius: 99px; background: currentColor; opacity: .25; transition: width .35s cubic-bezier(.3,.7,.2,1), opacity .35s; }
+.dots i.done { opacity: .6; }
+.dots i.now { width: 26px; opacity: 1; }
+.icon-btn { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 1.05rem;
+  background: color-mix(in srgb, var(--fg) 10%, transparent); }
+
+/* palco */
+.stage { display: flex; flex-direction: column; justify-content: center; gap: 18px; min-height: 0; padding-bottom: 8px; }
+.kicker { margin: 0; font-weight: 600; font-size: 1rem; opacity: .7; }
+.phrase {
+  margin: 0; font-family: var(--display); font-weight: 800;
+  font-size: clamp(2.2rem, 10.5vw, 3.4rem); line-height: .98; letter-spacing: -.035em;
+  text-wrap: balance; overflow-wrap: anywhere;
+}
+.phrase.flip { animation: flip .5s cubic-bezier(.3,.7,.2,1); }
+@keyframes flip { 0% { transform: scaleX(1); } 45% { transform: scaleX(0); } 55% { transform: scaleX(0); } 100% { transform: scaleX(1); } }
+.pill {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 16px 0 12px; border-radius: 99px; font-weight: 600; font-size: .95rem;
+  background: color-mix(in srgb, var(--fg) 10%, transparent);
+}
+.pill svg { width: 18px; height: 18px; }
+.pill:active { transform: scale(.96); }
+
+.score { display: flex; flex-direction: column; gap: 6px; }
+.score-num { font-family: var(--display); font-weight: 800; font-size: clamp(8rem, 46vw, 12rem); line-height: .8; letter-spacing: -.06em; font-variant-numeric: tabular-nums; }
+.verdict { font-family: var(--display); font-weight: 800; font-size: 2rem; letter-spacing: -.02em; line-height: 1; }
+.best { font-weight: 600; opacity: .6; font-size: .95rem; }
+
+/* controlos */
+.controls { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.side { display: flex; justify-content: center; }
+.mini { display: flex; flex-direction: column; align-items: center; gap: 7px; font-weight: 600; font-size: .82rem; }
+.mini .disc { width: 58px; height: 58px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--fg) 12%, transparent); transition: transform .12s; }
+.mini svg { width: 22px; height: 22px; }
+.mini:active .disc { transform: scale(.92); }
+.mini.on .disc { background: var(--fg); color: var(--bg); }
+
+.core { position: relative; width: 236px; height: 236px; display: grid; place-items: center; }
+.core canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.big {
+  position: relative; width: 112px; height: 112px; border-radius: 50%;
+  background: var(--white); color: var(--bg);
+  display: grid; place-items: center;
+  box-shadow: 0 14px 34px -10px color-mix(in srgb, var(--ink) 45%, transparent);
+  transition: transform .15s cubic-bezier(.3,.7,.2,1), background-color .45s, color .45s;
+}
+:root[data-phase="result"] .big { background: var(--ink); color: var(--butter); }
+.big:active { transform: scale(.93); }
+.big svg { width: 40px; height: 40px; }
+.big input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.big:focus-visible, .big:focus-within, .mini:focus-visible, .pill:focus-visible, .icon-btn:focus-visible { outline: 3px solid var(--fg); outline-offset: 4px; }
+.idle .big { animation: breathe 2.4s ease-in-out infinite; }
+@keyframes breathe { 50% { transform: scale(1.04); } }
+
+.hint { margin: 0; min-height: 44px; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 1rem; opacity: .8; font-variant-numeric: tabular-nums; }
+.hint .pill { align-self: center; opacity: 1; }
+
+/* toast e ajuda */
+.toast {
+  position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top, 0px)); transform: translateX(-50%);
+  width: min(420px, calc(100% - 32px)); background: var(--ink); color: var(--white);
+  padding: 12px 16px; border-radius: 16px; font-weight: 500; font-size: .95rem; line-height: 1.35; z-index: 20;
+}
+.sheet-wrap { position: fixed; inset: 0; z-index: 30; background: rgba(23,10,5,.4); display: flex; align-items: flex-end; justify-content: center; }
+.sheet {
+  width: 100%; max-width: 480px; background: var(--white); color: var(--ink); border-radius: 28px 28px 0 0;
+  padding: 26px max(24px, env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px));
+  display: flex; flex-direction: column; gap: 18px;
+}
+.sheet h2 { margin: 0; font-family: var(--display); font-weight: 800; font-size: 1.7rem; letter-spacing: -.02em; line-height: 1; }
+.sheet ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; font-size: 1.02rem; font-weight: 500; }
+.sheet li { display: flex; gap: 12px; align-items: center; }
+.sheet li b { width: 28px; height: 28px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: .85rem; color: var(--white); }
+.sheet .ok { height: 54px; border-radius: 99px; background: var(--ink); color: var(--white); font-weight: 700; font-size: 1.02rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  body, .dots i, .big { transition: none; }
+  .phrase.flip, .idle .big { animation: none; }
+}
+@media (max-height: 640px) {
+  .core { width: 196px; height: 196px; }
+  .big { width: 96px; height: 96px; }
+  .phrase { font-size: clamp(1.9rem, 9vw, 2.6rem); }
+  .score-num { font-size: 7rem; }
+}
+</style>
+
+</head>
+<body>
+<div class="app idle" id="app">
+  <header class="bar">
+    <div class="dots" id="dots" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <button class="icon-btn" id="help" type="button" aria-label="Como se joga">?</button>
+  </header>
+
+  <main class="stage" aria-live="polite">
+    <div id="words">
+      <p class="kicker" id="kicker">Diz isto</p>
+    </div>
+    <h1 class="phrase" id="phrase">O rato roeu a rolha da garrafa do rei da Rússia</h1>
+    <button class="pill" id="shuffle" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3.5c2 0 3.2 1 4.3 2.7l1.4 2.2C14.4 13.8 15.6 15 17.6 15H20M4 15h3.5c1.2 0 2.1-.4 2.9-1.1M14.5 8.1c.8-.7 1.7-1.1 3-1.1H20M17.5 4.5 20 7l-2.5 2.5M17.5 12.5 20 15l-2.5 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Outra frase
+    </button>
+    <div class="score" id="score" hidden>
+      <span class="score-num" id="score-num">0</span>
+      <span class="verdict" id="verdict"></span>
+      <span class="best" id="best"></span>
+    </div>
+  </main>
+
+  <div class="controls">
+    <div class="side" id="left"></div>
+    <div class="core">
+      <canvas id="ring" aria-hidden="true"></canvas>
+      <div id="big-slot"></div>
+    </div>
+    <div class="side" id="right"></div>
+  </div>
+  <div class="hint" id="hint">Toca para gravar</div>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<div class="sheet-wrap" id="sheet" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+    <h2 id="sheet-title">Como se joga</h2>
+    <ol>
+      <li><b style="background:#FF5B2E">1</b>Grava a frase</li>
+      <li><b style="background:#2E2BF5">2</b>Ouve-a ao contrário</li>
+      <li><b style="background:#FF5B2E">3</b>Imita o que ouviste</li>
+      <li><b style="background:#170A05">4</b>Ouve a tua imitação ao contrário</li>
+    </ol>
+    <button class="ok" id="sheet-ok" type="button">Bora</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const root = document.documentElement;
+  const MAX_SECONDS = 15;
+
+  const ICON = {
+    rec: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="currentColor"/></svg>',
+    stop: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor"/></svg>',
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.2v13.6a1 1 0 0 0 1.5.86l11-6.8a1 1 0 0 0 0-1.72l-11-6.8A1 1 0 0 0 8 5.2z" fill="currentColor"/></svg>',
+    back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 5.2v13.6a1 1 0 0 1-1.5.86l-11-6.8a1 1 0 0 1 0-1.72l11-6.8A1 1 0 0 1 16 5.2z" fill="currentColor"/></svg>',
+    next: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    retry: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4v4.5H9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  };
+
+  const PHRASES = [
+    "O rato roeu a rolha da garrafa do rei da Rússia",
+    "Três pratos de trigo para três tigres tristes",
+    "Olá, eu sou o teu eco",
+    "Banana",
+    "Hoje vou comer pizza",
+    "O meu gato chama-se Bolacha",
+    "Parabéns a você",
+    "Atirei o pau ao gato",
+    "Bom dia, bom dia",
+    "Pizza com ananás é crime",
+    "Có-có-ró-cóóó",
+    "Supercalifragilístico",
+    "Um, dois, três, quatro",
+    "Eu adoro jogar ao contrário",
+  ];
+  let pIdx = 0;
+  const reverseText = (t) => Array.from(t).reverse().join("").toLowerCase().replace(/^./, (c) => c.toUpperCase());
+
+  /* ---------- estado ---------- */
+  // fases: 1 gravar, 2 ouvir ao contrário, 3 imitar, 4 resultado
+  const S = { step: 1, score: null, orig: null, origrev: null, imit: null, result: null };
+
+  const buzz = (ms) => { try { navigator.vibrate && navigator.vibrate(ms || 8); } catch (e) {} };
+  let toastT = 0;
+  function toast(msg, ms) {
+    const t = $("toast"); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, ms || 4000);
+  }
+
+  /* ---------- áudio ---------- */
+  let ctx = null, analyser = null, freq = null;
+  function audio() {
+    if (!ctx) {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      analyser = ctx.createAnalyser(); analyser.fftSize = 256; analyser.smoothingTimeConstant = 0.75;
+      freq = new Uint8Array(analyser.frequencyBinCount);
+    }
+    if (ctx.state === "suspended") ctx.resume();
+    return ctx;
+  }
+  function decode(arr) {
+    const c = audio();
+    return new Promise((res, rej) => { const p = c.decodeAudioData(arr, res, rej); if (p && p.then) p.then(res, rej); });
+  }
+  function toMono(buf) {
+    const len = Math.min(buf.length, Math.floor(buf.sampleRate * MAX_SECONDS));
+    const out = new Float32Array(len);
+    for (let ch = 0; ch < buf.numberOfChannels; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < len; i++) out[i] += d[i] / buf.numberOfChannels; }
+    let peak = 0; for (let i = 0; i < len; i++) { const a = Math.abs(out[i]); if (a > peak) peak = a; }
+    if (peak > 0.001) { const g = 0.95 / peak; for (let i = 0; i < len; i++) out[i] *= g; }
+    return { data: out, rate: buf.sampleRate };
+  }
+  function reversed(c) { const n = c.data.length, r = new Float32Array(n); for (let i = 0; i < n; i++) r[i] = c.data[n - 1 - i]; return { data: r, rate: c.rate }; }
+
+  /* ---------- anel animado ---------- */
+  let ringMode = "idle", ringProgress = 0;
+  function drawRing() {
+    const cv = $("ring"), dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+    if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    const g = cv.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    g.clearRect(0, 0, W, H);
+    const fg = getComputedStyle(root).getPropertyValue("--fg").trim() || "#000";
+    const cx = W / 2, cy = H / 2, r0 = W * 0.27;
+    g.strokeStyle = fg; g.lineCap = "round";
+    if (ringMode !== "idle" && analyser) {
+      analyser.getByteFrequencyData(freq);
+      const N = 56;
+      g.lineWidth = 3.2;
+      for (let i = 0; i < N; i++) {
+        const k = (i * 11) % N, bin = 2 + Math.floor((k < N / 2 ? k : N - 1 - k) * 1.6);
+        const v = freq[bin] / 255;
+        const a = (i / N) * Math.PI * 2 - Math.PI / 2;
+        const len = 3 + v * W * 0.17;
+        g.globalAlpha = 0.35 + v * 0.65;
+        g.beginPath();
+        g.moveTo(cx + Math.cos(a) * (r0 + 10), cy + Math.sin(a) * (r0 + 10));
+        g.lineTo(cx + Math.cos(a) * (r0 + 10 + len), cy + Math.sin(a) * (r0 + 10 + len));
+        g.stroke();
+      }
+      // progresso
+      g.globalAlpha = 1; g.lineWidth = 3;
+      g.beginPath(); g.arc(cx, cy, r0 + 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ringProgress); g.stroke();
+    }
+    g.globalAlpha = 0.18; g.lineWidth = 3;
+    g.beginPath(); g.arc(cx, cy, r0 + 3, 0, Math.PI * 2); g.stroke();
+    g.globalAlpha = 1;
+  }
+  function loop() { drawRing(); if (ringMode !== "idle") requestAnimationFrame(loop); }
+  function ringStart(mode) { const was = ringMode; ringMode = mode; $("app").classList.remove("idle"); if (was === "idle") requestAnimationFrame(loop); }
+  function ringStop() { ringMode = "idle"; ringProgress = 0; $("app").classList.add("idle"); drawRing(); }
+
+  /* ---------- reprodução ---------- */
+  let playing = null;
+  function stopPlay() {
+    if (!playing) return;
+    const p = playing; playing = null;
+    try { p.src.onended = null; p.src.stop(); } catch (e) {}
+    clearInterval(p.timer);
+    ringStop(); render();
+  }
+  function play(key) {
+    const same = playing && playing.key === key;
+    stopPlay(); if (same) return;
+    const clip = S[key]; if (!clip) return;
+    buzz();
+    const c = audio();
+    const b = c.createBuffer(1, clip.data.length, clip.rate); b.getChannelData(0).set(clip.data);
+    const src = c.createBufferSource(); src.buffer = b;
+    src.connect(analyser); analyser.connect(c.destination);
+    const t0 = c.currentTime + 0.02, D = b.duration;
+    const p = { key, src, timer: 0 };
+    playing = p;
+    p.timer = setInterval(() => { ringProgress = Math.min(1, Math.max(0, (c.currentTime - t0) / D)); }, 30);
+    src.onended = () => { if (playing === p) { try { analyser.disconnect(); } catch (e) {} stopPlay(); } };
+    src.start(t0);
+    ringStart("play"); render();
+  }
+
+  /* ---------- gravação ---------- */
+  const pol = document.permissionsPolicy || document.featurePolicy;
+  let micOK = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+  try { if (micOK && pol && pol.allowsFeature && !pol.allowsFeature("microphone")) micOK = false; } catch (e) {}
+
+  let rec = null;
+  async function toggleMic() {
+    if (rec) { if (rec.mr.state === "recording") rec.mr.stop(); return; }
+    stopPlay(); audio(); buzz(12);
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } }); }
+    catch (e) { micOK = false; render(); toast("Não tenho acesso ao microfone. Permite-o nas definições do browser, ou Toca outra vez para escolher um ficheiro de áudio.", 6000); return; }
+    let mr;
+    try { mr = new MediaRecorder(stream); } catch (e) { stream.getTracks().forEach((t) => t.stop()); micOK = false; render(); return; }
+    try { analyser.disconnect(); } catch (e) {}
+    const node = ctx.createMediaStreamSource(stream); node.connect(analyser);
+    const chunks = [], t0 = performance.now();
+    rec = { mr, timer: 0 };
+    rec.timer = setInterval(() => {
+      const s = (performance.now() - t0) / 1000;
+      ringProgress = s / MAX_SECONDS;
+      $("hint").textContent = "0:" + String(Math.floor(s)).padStart(2, "0");
+      if (s >= MAX_SECONDS && mr.state === "recording") mr.stop();
+    }, 100);
+    mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+    mr.onstop = () => {
+      clearInterval(rec.timer); rec = null;
+      stream.getTracks().forEach((t) => t.stop());
+      try { node.disconnect(); } catch (e) {}
+      ringStop();
+      ingest(new Blob(chunks, { type: mr.mimeType || "audio/webm" }));
+    };
+    mr.start();
+    ringStart("rec"); render();
+    $("hint").textContent = "0:00";
+  }
+
+  async function ingest(blob) {
+    stopPlay();
+    const slot = S.step === 1 ? "orig" : "imit";
+    try {
+      const clip = toMono(await decode(await blob.arrayBuffer()));
+      if (clip.data.length < clip.rate * 0.3) throw new Error("short");
+      buzz(20);
+      if (slot === "orig") {
+        S.orig = clip; S.origrev = reversed(clip); S.imit = S.result = null; S.score = null;
+        go(2); setTimeout(() => { if (S.step === 2) play("origrev"); }, 450);
+      } else {
+        S.imit = clip; S.result = reversed(clip);
+        let n = 0; try { n = similarity(S.orig, S.result); } catch (e) {}
+        S.score = n; go(4); countUp(n); saveBest(n);
+        setTimeout(() => { if (S.step === 4) play("result"); }, 900);
+      }
+    } catch (e) {
+      render();
+      toast(e && e.message === "short" ? "Ficou muito curto. Grava pelo menos meio segundo." : "Não consegui ler esse som. Tenta outra vez.");
+    }
+  }
+
+  /* ---------- botões ---------- */
+  function bigButton(kind, label, onClick) {
+    const file = kind === "rec" && !micOK;
+    const el = document.createElement(file ? "label" : "button");
+    if (!file) el.type = "button";
+    el.className = "big"; el.setAttribute("aria-label", label);
+    el.innerHTML = ICON[kind];
+    if (file) {
+      const inp = document.createElement("input");
+      inp.type = "file"; inp.accept = "audio/*"; inp.id = "rec-file"; inp.setAttribute("aria-label", label);
+      inp.addEventListener("click", () => { stopPlay(); audio(); buzz(); });
+      inp.addEventListener("change", () => { const f = inp.files && inp.files[0]; inp.value = ""; if (f) ingest(f); });
+      el.append(inp);
+    } else el.addEventListener("click", onClick);
+    return el;
+  }
+  function mini(icon, label, onClick, on) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "mini" + (on ? " on" : "");
+    b.innerHTML = '<span class="disc">' + ICON[icon] + "</span><span></span>";
+    b.lastChild.textContent = label;
+    b.addEventListener("click", onClick);
+    return b;
+  }
+
+  /* ---------- render ---------- */
+  const VERDICT = (n) => n >= 85 ? "Lenda." : n >= 70 ? "Quase igual!" : n >= 55 ? "Nada mau." : n >= 40 ? "Quase lá." : "Outra língua.";
+  let lastPhraseMode = "fwd";
+
+  function go(step) { S.step = step; buzz(); render(); }
+
+  function render() {
+    const st = S.step, isPlaying = (k) => playing && playing.key === k;
+    root.dataset.phase = st === 2 ? "listen" : st === 4 ? "result" : "rec";
+    try { document.querySelector('meta[name="theme-color"]').content = st === 2 ? "#2E2BF5" : st === 4 ? "#FFE14A" : "#FF5B2E"; } catch (e) {}
+    $("dots").querySelectorAll("i").forEach((d, i) => { d.className = i + 1 === st ? "now" : i + 1 < st ? "done" : ""; });
+
+    const phrase = PHRASES[pIdx];
+    const mode = st === 1 ? "fwd" : "rev";
+    const ph = $("phrase");
+    const txt = mode === "fwd" ? phrase : reverseText(phrase);
+    if (ph.textContent !== txt) {
+      ph.textContent = txt;
+      if (mode !== lastPhraseMode) { ph.classList.remove("flip"); void ph.offsetWidth; ph.classList.add("flip"); }
+    }
+    lastPhraseMode = mode;
+    ph.hidden = st === 4;
+    $("kicker").textContent = ["Diz isto", "Ao contrário soa assim", "Agora imita", ""][st - 1];
+    $("kicker").hidden = st === 4;
+    $("shuffle").hidden = st !== 1 || !!rec;
+    $("score").hidden = st !== 4;
+
+    const left = $("left"), right = $("right"), slot = $("big-slot");
+    left.innerHTML = ""; right.innerHTML = ""; slot.innerHTML = "";
+    const hint = $("hint"); hint.innerHTML = "";
+
+    if (st === 1 || st === 3) {
+      slot.append(bigButton(rec ? "stop" : "rec", rec ? "Parar" : "Gravar", toggleMic));
+      if (st === 3 && !rec) left.append(mini("back", "Ouvir", () => play("origrev"), isPlaying("origrev")));
+      if (!rec) hint.textContent = isPlaying("origrev") ? "A tocar ao contrário" : micOK ? "Toca para gravar" : "Escolhe um áudio";
+    }
+    if (st === 2) {
+      slot.append(bigButton(isPlaying("origrev") ? "stop" : "back", "Ouvir ao contrário", () => play("origrev")));
+      left.append(mini("play", "Original", () => play("orig"), isPlaying("orig")));
+      right.append(mini("next", "Imitar", () => { stopPlay(); go(3); }));
+      hint.textContent = isPlaying("origrev") ? "A tocar ao contrário" : isPlaying("orig") ? "A tocar o original" : "Ouve as vezes que quiseres";
+    }
+    if (st === 4) {
+      slot.append(bigButton(isPlaying("result") ? "stop" : "play", "Ouvir o resultado", () => play("result")));
+      left.append(mini("play", "Original", () => play("orig"), isPlaying("orig")));
+      right.append(mini("retry", "Repetir", () => { stopPlay(); S.imit = S.result = null; S.score = null; go(3); }));
+      const nb = document.createElement("button");
+      nb.type = "button"; nb.className = "pill"; nb.textContent = "Nova frase";
+      nb.addEventListener("click", () => { restart(); shuffle(); });
+      hint.append(nb);
+    }
+  }
+
+  function restart() { stopPlay(); S.orig = S.origrev = S.imit = S.result = null; S.score = null; go(1); }
+  function shuffle() {
+    let n; do { n = Math.floor(Math.random() * PHRASES.length); } while (n === pIdx);
+    pIdx = n; buzz();
+    const ph = $("phrase"); ph.textContent = ""; render();
+    ph.classList.remove("flip"); void ph.offsetWidth; ph.classList.add("flip");
+  }
+  $("shuffle").addEventListener("click", shuffle);
+
+  function countUp(n) {
+    $("verdict").textContent = VERDICT(n);
+    const t0 = performance.now(), D = 1100, el = $("score-num");
+    const tick = (t) => {
+      const f = Math.min(1, Math.max(0, (t - t0) / D)), e = 1 - Math.pow(1 - f, 4);
+      el.textContent = String(Math.round(n * e));
+      if (f < 1) requestAnimationFrame(tick);
+    };
+    el.textContent = "0"; requestAnimationFrame(tick);
+  }
+  function readBest() { try { return Number(localStorage.getItem("cac-best") || 0); } catch (e) { return 0; } }
+  function saveBest(n) {
+    const b = readBest();
+    if (n > b) { try { localStorage.setItem("cac-best", String(n)); } catch (e) {} $("best").textContent = b ? "Novo recorde" : ""; }
+    else $("best").textContent = "Recorde " + b;
+  }
+
+  /* ---------- ajuda ---------- */
+  $("help").addEventListener("click", () => { $("sheet").hidden = false; $("sheet-ok").focus(); });
+  $("sheet-ok").addEventListener("click", () => { $("sheet").hidden = true; });
+  $("sheet").addEventListener("click", (e) => { if (e.target === $("sheet")) $("sheet").hidden = true; });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") $("sheet").hidden = true; });
+  window.addEventListener("resize", drawRing);
+
+  /* ---------- pontuação: semelhança espectral + DTW ---------- */
+  function fft(re, im) {
+    const n = re.length;
+    for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit;
+      if (i < j) { let t = re[i]; re[i] = re[j]; re[j] = t; t = im[i]; im[i] = im[j]; im[j] = t; } }
+    for (let len = 2; len <= n; len <<= 1) {
+      const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+      for (let i = 0; i < n; i += len) { let cr = 1, ci = 0;
+        for (let k = 0; k < len / 2; k++) { const a = i + k, b = a + len / 2;
+          const xr = re[b] * cr - im[b] * ci, xi = re[b] * ci + im[b] * cr;
+          re[b] = re[a] - xr; im[b] = im[a] - xi; re[a] += xr; im[a] += xi;
+          const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t; } }
+    }
+  }
+  function features(clip) {
+    const f = Math.max(1, Math.round(clip.rate / 16000));
+    const n = Math.floor(clip.data.length / f), x = new Float32Array(n);
+    for (let i = 0; i < n; i++) { let s = 0; for (let k = 0; k < f; k++) s += clip.data[i * f + k]; x[i] = s / f; }
+    const fs = clip.rate / f, N = 512, hop = Math.round(fs * 0.01), B = 24;
+    const mel = (h) => 2595 * Math.log10(1 + h / 700), imel = (m) => 700 * (Math.pow(10, m / 2595) - 1);
+    const lo = mel(80), hi = mel(Math.min(7000, fs / 2 - 100));
+    const edges = []; for (let i = 0; i < B + 2; i++) edges.push(Math.floor(imel(lo + (hi - lo) * i / (B + 1)) / fs * N));
+    const win = new Float32Array(N); for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
+    const raw = [], energy = [], re = new Float64Array(N), im = new Float64Array(N);
+    for (let s = 0; s + N <= n; s += hop) {
+      let e = 0;
+      for (let i = 0; i < N; i++) { re[i] = x[s + i] * win[i]; im[i] = 0; e += x[s + i] * x[s + i]; }
+      fft(re, im);
+      const v = new Float32Array(B);
+      for (let b = 0; b < B; b++) {
+        const a = edges[b], c = edges[b + 1], z = Math.max(edges[b + 2], c + 1); let sum = 0;
+        for (let k = a; k < z; k++) { const w = k < c ? (k - a) / Math.max(1, c - a) : (z - k) / Math.max(1, z - c); sum += w * (re[k] * re[k] + im[k] * im[k]); }
+        v[b] = sum;
+      }
+      raw.push(v); energy.push(10 * Math.log10(e / N + 1e-10));
+    }
+    let peakBand = 0; for (const v of raw) for (let b = 0; b < B; b++) if (v[b] > peakBand) peakBand = v[b];
+    const floor = peakBand * 3e-5 + 1e-12;
+    const frames = raw.map((v) => v.map((y) => Math.log(y + floor)));
+    let mx = -Infinity; for (const e of energy) if (e > mx) mx = e;
+    let a = 0, z = energy.length - 1;
+    while (a < z && energy[a] < mx - 30) a++;
+    while (z > a && energy[z] < mx - 30) z--;
+    let fr = frames.slice(a, z + 1);
+    const mean = new Float32Array(B);
+    for (const v of fr) for (let b = 0; b < B; b++) mean[b] += v[b] / fr.length;
+    fr = fr.map((v) => v.map((y, b) => y - mean[b]));
+    const MAXF = 250;
+    if (fr.length > MAXF) {
+      const out = [], r = fr.length / MAXF;
+      for (let i = 0; i < MAXF; i++) {
+        const s0 = Math.floor(i * r), s1 = Math.max(s0 + 1, Math.floor((i + 1) * r)), v = new Float32Array(B);
+        for (let j = s0; j < s1; j++) for (let b = 0; b < B; b++) v[b] += fr[j][b] / (s1 - s0);
+        out.push(v);
+      }
+      fr = out;
+    }
+    return { frames: fr, seconds: (z - a + 1) * hop / fs };
+  }
+  function cosDist(p, q) { let d = 0, a = 0, b = 0; for (let i = 0; i < p.length; i++) { d += p[i] * q[i]; a += p[i] * p[i]; b += q[i] * q[i]; } return 1 - d / (Math.sqrt(a * b) + 1e-9); }
+  function dtw(A, Bf) {
+    const n = A.length, m = Bf.length, INF = 1e18;
+    let prev = new Float64Array(m + 1).fill(INF), cur = new Float64Array(m + 1); prev[0] = 0;
+    for (let i = 1; i <= n; i++) {
+      cur[0] = INF;
+      for (let j = 1; j <= m; j++) { const c = cosDist(A[i - 1], Bf[j - 1]); cur[j] = Math.min(prev[j - 1] + 2 * c, prev[j] + c, cur[j - 1] + c); }
+      const t = prev; prev = cur; cur = t;
+    }
+    return prev[m] / (n + m);
+  }
+  function similarity(c1, c2) {
+    const f1 = features(c1), f2 = features(c2);
+    if (f1.frames.length < 5 || f2.frames.length < 5) return 0;
+    const d = dtw(f1.frames, f2.frames);
+    let s = Math.min(1, Math.max(0, (0.6 - d) / 0.4));
+    const r = Math.min(f1.seconds, f2.seconds) / Math.max(f1.seconds, f2.seconds);
+    s *= 0.65 + 0.35 * r;
+    return Math.round(100 * Math.pow(s, 0.85));
+  }
+
+  render();
+  drawRing();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(drawRing);
+})();
+</script>
+
+</body>
+</html>
