@@ -76,8 +76,8 @@
     home: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11 12 4l8 7v8.5a.5.5 0 0 1-.5.5H15v-6H9v6H4.5a.5.5 0 0 1-.5-.5z" fill="currentColor"/></svg>',
     x: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
   };
-  const PLAYER_COLORS = ["#FF5B2E", "#3B37F0", "#F5B700", "#1DB954", "#FF4FA3", "#00A6D6", "#8E5CF7", "#FF8A1F"];
-  const EMOJIS = ["🦊", "🐸", "🐼", "🦄", "🐙", "🐯", "🐵", "🐧", "🦁", "🐨", "🐷", "🐰"];
+  // Pares fundo/texto para as iniciais (contraste ≥ 5:1)
+  const AV_COLORS = [["#FFE1E8", "#B0103A"], ["#ECE8FF", "#4B3BC7"], ["#FFEAD9", "#A1450F"], ["#DDF4E8", "#17703F"], ["#DDEEFF", "#1A5E9E"], ["#FFF2C2", "#7A5A00"], ["#F2E2FF", "#7A32B0"], ["#EDEDF2", "#3A3A44"]];
 
   let PHRASES = [];
   let pIdx = 0;
@@ -391,24 +391,53 @@
   const pName = (i) => (S.players[i] && S.players[i].name) || t("player", { n: i + 1 });
   const totalRounds = () => S.players.length * S.rpp;
 
-  function avatar(i, size) {
-    const p = S.players[i] || {};
+  function initials(name) {
+    const parts = String(name || "").trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return "?";
+    return (parts[0][0] + (parts.length > 1 ? parts[parts.length - 1][0] : (parts[0][1] || ""))).toUpperCase();
+  }
+  function avatarEl(person, i, size) {
     const el = document.createElement("span");
     el.className = "av" + (size ? " " + size : "");
-    el.style.setProperty("--c", PLAYER_COLORS[i % PLAYER_COLORS.length]);
-    el.textContent = p.emoji || EMOJIS[i % EMOJIS.length];
+    const [bg, fg] = AV_COLORS[i % AV_COLORS.length];
+    el.style.setProperty("--bgc", bg); el.style.setProperty("--fgc", fg);
+    if (person && person.photo) { const img = document.createElement("img"); img.src = person.photo; img.alt = ""; el.append(img); }
+    else el.textContent = initials(person && person.name ? person.name : t("player", { n: i + 1 }));
     el.setAttribute("aria-hidden", "true");
     return el;
   }
-  function setWho(i, extra) {
+  const avatar = (i, size) => avatarEl(S.players[i], i, size);
+  function setWho(i, role) {
     const w = $("who"); w.innerHTML = ""; w.hidden = false;
-    const nm = document.createElement("span"); nm.textContent = extra || pName(i);
-    w.append(avatar(i), nm);
+    const tx = document.createElement("div");
+    const nm = document.createElement("div"); nm.className = "who-name"; nm.textContent = pName(i);
+    const rl = document.createElement("div"); rl.className = "who-role"; rl.textContent = role || "";
+    tx.append(nm, rl);
+    w.append(avatar(i, ""), tx);
   }
-  function setHero(i, cls) {
+  function laurelSVG() {
+    let leaves = "";
+    for (const side of [-1, 1]) {
+      for (let k = 0; k < 7; k++) {
+        const a = (200 + k * 20) * Math.PI / 180;
+        const x = 100 + side * Math.cos(a) * -56, y = 66 + Math.sin(a) * -46;
+        const rot = (side === 1 ? 1 : -1) * (k * 20 - 70);
+        leaves += '<ellipse cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" rx="5" ry="11" transform="rotate(' + rot + ' ' + x.toFixed(1) + ' ' + y.toFixed(1) + ')"/>';
+      }
+    }
+    return '<svg viewBox="0 0 200 120" aria-hidden="true"><g fill="#fff" opacity=".95">' + leaves + "</g></svg>";
+  }
+  function setHero(i, opts) {
+    opts = opts || {};
     const h = $("hero"); h.innerHTML = ""; h.hidden = false;
-    const a = avatar(i, "lg"); if (cls) a.classList.add(cls);
-    h.append(a);
+    h.classList.toggle("pulse", !!opts.pulse);
+    const wrap = document.createElement("div"); wrap.className = "laurel";
+    wrap.innerHTML = opts.laurel === false ? "" : laurelSVG();
+    wrap.append(avatar(i, "lg"));
+    const pills = document.createElement("div"); pills.className = "pills";
+    if (opts.badge) { const b = document.createElement("span"); b.className = "pill badge"; b.textContent = opts.badge; pills.append(b); }
+    const p = document.createElement("span"); p.className = "pill"; p.textContent = pName(i); pills.append(p);
+    h.append(wrap, pills);
   }
   function ctaBtn(label, kind, onClick, icon) {
     const b = document.createElement("button");
@@ -433,7 +462,7 @@
     $("home-btn").style.visibility = rec ? "hidden" : "visible";
     $("stage").classList.remove("centered");
     ["left", "right", "big-slot", "hint", "cta"].forEach((id) => { $(id).innerHTML = ""; });
-    ["rank", "share-btn", "speed", "hero", "who", "score"].forEach((id) => { $(id).hidden = true; });
+    ["rank", "share-btn", "speed", "hero", "who", "score", "podium"].forEach((id) => { $(id).hidden = true; });
     $("shuffle").hidden = true;
     $("app").classList.remove("no-controls");
     if (duo) renderDuo(); else renderSolo();
@@ -455,26 +484,26 @@
     const st = S.step, N = S.players.length, a = S.round % N, b = (S.round + 1) % N;
     const left = $("left"), right = $("right"), slot = $("big-slot"), hint = $("hint"), cta = $("cta");
     if (st === 1) {
-      setWho(a, t("secret", { p: pName(a) }));
+      setWho(a, t("roleSecret"));
       setWords("", t("recAnything"));
       slot.append(bigButton(rec ? "stop" : "rec", rec ? t("stop") : t("rec"), toggleMic));
-      if (!rec) hint.textContent = "🙉 " + t("cantHear", { p: pName(b) });
+      if (!rec) hint.textContent = t("cantHear", { p: pName(b) });
     }
     if (st === 2) {
       $("app").classList.add("no-controls"); $("stage").classList.add("centered");
-      setHero(b);
-      setWords(t("passK"), pName(b));
+      setHero(b, { laurel: false });
+      setWords(t("passK"), "");
       cta.append(ctaBtn(t("ready"), "primary", () => { sfx("go"); go(3); }));
       cta.append(ctaBtn(t("rerecord"), "text", () => { S.orig = S.origrev = null; go(1); }));
     }
     if (st === 3) {
-      setWho(b); setWords("", t("listenBack")); showSpeed();
+      setWho(b, t("roleGuess")); setWords("", t("listenBack")); showSpeed();
       slot.append(bigButton(isPlaying("origrev") ? "stop" : "back", t("listenRev"), () => play("origrev")));
       hint.textContent = isPlaying("origrev") ? t("playingRev") : t("listenAny");
       cta.append(ctaBtn(t("imitate"), "primary", () => { stopPlay(); go(4); }, "next"));
     }
     if (st === 4) {
-      setWho(b); setWords("", t("nowImitate"));
+      setWho(b, t("roleGuess")); setWords("", t("nowImitate"));
       slot.append(bigButton(rec ? "stop" : "rec", rec ? t("stop") : t("rec"), toggleMic));
       if (!rec) {
         showSpeed();
@@ -483,7 +512,7 @@
       }
     }
     if (st === 5) {
-      setWho(b, t("guessK", { p: pName(b) })); setWords("", t("whatWas"));
+      setWho(b, t("roleGuess")); setWords("", t("whatWas"));
       slot.append(bigButton(isPlaying("result") ? "stop" : "play", t("listenImit"), () => play("result")));
       left.append(mini("retry", t("imitateAgain"), () => { stopPlay(); S.imit = S.result = null; go(4); }));
       hint.textContent = isPlaying("result") ? t("yourImitRev") : t("sayAloud");
@@ -492,11 +521,11 @@
     if (st === 6) {
       if (S.revealing) {
         $("app").classList.add("no-controls"); $("stage").classList.add("centered");
-        setHero(a, "pulse"); setWords(t("itWas"), "…");
+        setHero(a, { pulse: true }); setWords(t("itWas"), "");
         return;
       }
-      setHero(a);
-      setWords(t("itWas") + " · " + pName(a), t("gotIt"));
+      setHero(a, { badge: t("roleRec") });
+      setWords("", t("gotIt"));
       $("share-btn").hidden = false;
       slot.append(bigButton(isPlaying("orig") ? "stop" : "play", t("listenOrig"), () => play("orig")));
       const row = document.createElement("div"); row.className = "row";
@@ -506,19 +535,34 @@
     if (st === 7) {
       $("app").classList.add("no-controls"); $("stage").classList.add("centered");
       const top = Math.max(...S.players.map((p) => p.score));
-      const winners = S.players.map((p, i) => ({ ...p, i })).filter((p) => p.score === top);
-      if (top > 0) setHero(winners[0].i, "crown");
+      const ranked = S.players.map((p, i) => ({ ...p, i })).sort((x, y) => y.score - x.score);
+      const winners = ranked.filter((p) => p.score === top);
       if (top === 0) setWords("", t("nobody"));
       else if (winners.length > 1) setWords(t("tie"), winners.map((p) => p.name).join(" & "));
       else setWords(t("winner"), winners[0].name);
-      const rank = $("rank"); rank.innerHTML = ""; rank.hidden = false;
-      S.players.map((p, i) => ({ ...p, i })).sort((x, y) => y.score - x.score).forEach((p, k) => {
-        const li = document.createElement("li");
-        if (p.score === top && top > 0) li.className = "top";
-        const pos = document.createElement("span"); pos.className = "pos"; pos.textContent = String(k + 1);
+      const pod = $("podium"); pod.innerHTML = ""; pod.hidden = false;
+      [1, 0, 2].forEach((k) => {
+        const p = ranked[k]; const col = document.createElement("div");
+        if (!p) { pod.append(col); return; }
+        col.className = "pod p" + (k + 1);
+        const medal = document.createElement("span"); medal.className = "medal"; medal.append(avatar(p.i, "xl"));
         const nm = document.createElement("span"); nm.className = "nm"; nm.textContent = p.name;
+        const pts = document.createElement("span"); pts.className = "pts"; pts.textContent = p.score === 1 ? t("ptOne") : t("ptsN", { n: p.score });
+        const block = document.createElement("div"); block.className = "block"; block.textContent = String(k + 1);
+        col.append(medal, nm, pts, block); pod.append(col);
+      });
+      const rank = $("rank"); rank.innerHTML = ""; rank.hidden = false;
+      const hd = document.createElement("li"); hd.className = "hd";
+      [t("colRank"), t("colPlayer"), t("colPoints")].forEach((x) => { const s = document.createElement("span"); s.textContent = x; hd.append(s); });
+      rank.append(hd);
+      ranked.forEach((p, k) => {
+        const li = document.createElement("li"); li.className = "row" + (p.score === top && top > 0 ? " top" : "");
+        const pos = document.createElement("span"); pos.className = "pos"; pos.textContent = String(k + 1);
+        const pl = document.createElement("span"); pl.className = "pl";
+        const nm = document.createElement("span"); nm.textContent = p.name;
+        pl.append(avatar(p.i, "sm"), nm);
         const sc = document.createElement("b"); sc.textContent = String(p.score);
-        li.append(pos, avatar(p.i), nm, sc); rank.append(li);
+        li.append(pos, pl, sc); rank.append(li);
       });
       cta.append(ctaBtn(t("playAgain"), "primary", () => { sfx("go"); startDuo(); }, "retry"));
       const row = document.createElement("div"); row.className = "row";
@@ -541,7 +585,7 @@
   function endRound(hit) {
     stopPlay();
     const N = S.players.length, b = (S.round + 1) % N;
-    if (hit) { S.players[b].score++; sfx("win"); confetti(120); buzz(30); toast(S.players[b].emoji + "  " + t("pointFor", { p: pName(b) }), 2200); }
+    if (hit) { S.players[b].score++; sfx("win"); confetti(120); buzz(30); toast(t("pointFor", { p: pName(b) }), 2200); }
     else { sfx("lose"); buzz(10); toast(t("noPoint"), 2200); }
     S.round++;
     S.orig = S.origrev = S.imit = S.result = null;
@@ -580,6 +624,8 @@
     }
     if (st === 4) {
       $("share-btn").hidden = false;
+      $("len").textContent = (S.orig ? (S.orig.data.length / S.orig.rate) : 0).toFixed(1).replace(".", LANG === "en" ? "." : ",") + " s";
+      requestAnimationFrame(drawChart);
       slot.append(bigButton(isPlaying("result") ? "stop" : "play", t("resultAria"), () => play("result")));
       left.append(mini("play", t("original"), () => play("orig"), isPlaying("orig")));
       right.append(mini("retry", t("retry"), () => { stopPlay(); S.imit = S.result = null; S.score = null; go(3); }));
@@ -618,19 +664,22 @@
     render(); drawRing();
   }
 
-  // Jogadores guardados: [{ name, emoji }]
+  // Jogadores guardados: [{ name, photo }] (a foto fica só neste telemóvel)
   let roster = (() => {
     try {
       const p = JSON.parse(store.get("cac-roster") || "null");
-      if (Array.isArray(p) && p.length >= 2) return p.slice(0, 8).map((x, i) => ({ name: String(x.name || ""), emoji: EMOJIS.includes(x.emoji) ? x.emoji : EMOJIS[i] }));
+      if (Array.isArray(p) && p.length >= 2) return p.slice(0, 8).map((x) => ({ name: String(x.name || ""), photo: typeof x.photo === "string" && x.photo.startsWith("data:image/") ? x.photo : "" }));
     } catch (e) {}
     try {
       const old = JSON.parse(store.get("cac-players") || "null");
-      if (Array.isArray(old) && old.length >= 2) return old.slice(0, 8).map((n, i) => ({ name: String(n), emoji: EMOJIS[i] }));
+      if (Array.isArray(old) && old.length >= 2) return old.slice(0, 8).map((n) => ({ name: String(n), photo: "" }));
     } catch (e) {}
-    return [{ name: "", emoji: EMOJIS[0] }, { name: "", emoji: EMOJIS[1] }];
+    return [{ name: "", photo: "" }, { name: "", photo: "" }];
   })();
-  function saveRoster() { store.set("cac-roster", JSON.stringify(roster)); }
+  function saveRoster() {
+    try { localStorage.setItem("cac-roster", JSON.stringify(roster)); }
+    catch (e) { store.set("cac-roster", JSON.stringify(roster.map((r) => ({ name: r.name, photo: "" })))); }
+  }
   function showSetup() {
     if (rec) return;
     stopPlay(); audio();
@@ -639,27 +688,44 @@
     setPhase("rec");
     renderSetup();
   }
-  function nextEmoji(cur) {
-    const used = new Set(roster.map((r) => r.emoji));
-    for (let k = 1; k <= EMOJIS.length; k++) { const e = EMOJIS[(EMOJIS.indexOf(cur) + k) % EMOJIS.length]; if (!used.has(e)) return e; }
-    return cur;
+  // Recorta a foto ao centro e reduz para 192×192 (fica leve no telemóvel).
+  function photoToData(file) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(file), img = new Image();
+      img.onload = () => {
+        const s = Math.min(img.naturalWidth, img.naturalHeight), cv = document.createElement("canvas");
+        cv.width = cv.height = 192;
+        cv.getContext("2d").drawImage(img, (img.naturalWidth - s) / 2, (img.naturalHeight - s) / 2, s, s, 0, 0, 192, 192);
+        URL.revokeObjectURL(url); res(cv.toDataURL("image/jpeg", 0.82));
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("img")); };
+      img.src = url;
+    });
   }
   function renderSetup() {
     const list = $("players"); list.innerHTML = "";
     roster.forEach((p, i) => {
       const row = document.createElement("div"); row.className = "player-row";
-      const avb = document.createElement("button"); avb.type = "button"; avb.className = "av-btn";
-      avb.setAttribute("aria-label", t("changeAvatar", { p: p.name || t("player", { n: i + 1 }) }));
-      const av = document.createElement("span"); av.className = "av md"; av.style.setProperty("--c", PLAYER_COLORS[i % PLAYER_COLORS.length]); av.textContent = p.emoji;
-      avb.append(av);
-      avb.addEventListener("click", () => { sfx("tap"); buzz(); p.emoji = nextEmoji(p.emoji); saveRoster(); av.textContent = p.emoji; });
+      const pick = document.createElement("label"); pick.className = "av-pick";
+      pick.setAttribute("aria-label", t("changeAvatar", { p: p.name || t("player", { n: i + 1 }) }));
+      const file = document.createElement("input"); file.type = "file"; file.accept = "image/*"; file.setAttribute("capture", "user"); file.id = "pphoto-" + i;
+      file.addEventListener("change", async () => {
+        const f = file.files && file.files[0]; file.value = ""; if (!f) return;
+        try { p.photo = await photoToData(f); saveRoster(); renderSetup(); sfx("tap"); } catch (e) {}
+      });
+      const cam = document.createElement("span"); cam.className = "cam";
+      cam.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.2" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>';
+      pick.append(avatarEl(p.name || p.photo ? p : { name: t("player", { n: i + 1 }) }, i, ""), cam, file);
       const inp = document.createElement("input");
       inp.type = "text"; inp.maxLength = 16; inp.id = "pname-" + i; inp.value = p.name;
       inp.placeholder = t("player", { n: i + 1 }); inp.setAttribute("aria-label", t("player", { n: i + 1 }));
-      inp.autocomplete = "off"; inp.enterKeyHint = "next";
-      inp.addEventListener("input", () => { p.name = inp.value; saveRoster(); });
+      inp.autocomplete = "off"; inp.enterKeyHint = "next"; inp.setAttribute("autocapitalize", "words"); inp.spellcheck = false;
+      inp.addEventListener("input", () => {
+        p.name = inp.value; saveRoster();
+        if (!p.photo) { const av = pick.querySelector(".av"); if (av) av.textContent = initials(p.name || t("player", { n: i + 1 })); }
+      });
       inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { const nx = $("pname-" + (i + 1)); if (nx) nx.focus(); else inp.blur(); } });
-      row.append(avb, inp);
+      row.append(pick, inp);
       if (roster.length > 2) {
         const x = document.createElement("button"); x.type = "button"; x.className = "x"; x.innerHTML = ICON.x;
         x.setAttribute("aria-label", t("removePlayer"));
@@ -673,14 +739,14 @@
   }
   $("add-player").addEventListener("click", () => {
     if (roster.length >= 8) return;
-    sfx("tap"); roster.push({ name: "", emoji: nextEmoji(EMOJIS[roster.length % EMOJIS.length]) }); saveRoster(); renderSetup();
+    sfx("tap"); roster.push({ name: "", photo: "" }); saveRoster(); renderSetup();
     const last = $("pname-" + (roster.length - 1)); if (last) last.focus();
   });
   document.querySelectorAll("#rounds-seg button").forEach((b) => b.addEventListener("click", () => {
     sfx("tap"); S.rpp = Number(b.dataset.r); store.set("cac-rpp", String(S.rpp)); renderSetup();
   }));
   $("setup-go").addEventListener("click", () => {
-    S.players = roster.map((p, i) => ({ name: p.name.trim() || t("player", { n: i + 1 }), emoji: p.emoji, score: 0 }));
+    S.players = roster.map((p, i) => ({ name: p.name.trim() || t("player", { n: i + 1 }), photo: p.photo, score: 0 }));
     sfx("go"); startDuo();
   });
   $("setup-back").addEventListener("click", () => { sfx("tap"); showHome(); });
@@ -694,8 +760,8 @@
   });
 
   const HELP = {
-    solo: [["#FF5B2E", "h_s1"], ["#3B37F0", "h_s2"], ["#FF5B2E", "h_s3"], ["#16141C", "h_s4"]],
-    duo: [["#FF5B2E", "h_d1"], ["#3B37F0", "h_d2"], ["#FF5B2E", "h_d3"], ["#1DB954", "h_d4"]],
+    solo: [["#E3134A", "h_s1"], ["#6A5AE8", "h_s2"], ["#E3134A", "h_s3"], ["#6A5AE8", "h_s4"]],
+    duo: [["#E3134A", "h_d1"], ["#6A5AE8", "h_d2"], ["#E3134A", "h_d3"], ["#6A5AE8", "h_d4"]],
   };
   function fillHelp() {
     const ol = $("help-list"); ol.innerHTML = "";
@@ -717,8 +783,6 @@
   function countUp(n) {
     $("verdict").textContent = VERDICT(n);
     const t0 = performance.now(), D = 1100, el = $("score-num");
-    $("meter").style.width = "0%";
-    requestAnimationFrame(() => requestAnimationFrame(() => { $("meter").style.width = n + "%"; }));
     const tick = (now) => {
       const f = Math.min(1, Math.max(0, (now - t0) / D)), e = 1 - Math.pow(1 - f, 4);
       el.textContent = String(Math.round(n * e));
@@ -726,11 +790,44 @@
     };
     el.textContent = "0"; requestAnimationFrame(tick);
   }
+  // Gráfico: envolvente do original (lavanda) e da imitação ao contrário (vermelho).
+  function envelope(clip, n) {
+    const d = clip.data, step = d.length / n, out = [];
+    for (let i = 0; i < n; i++) { let m = 0; const a = Math.floor(i * step), z = Math.floor((i + 1) * step); for (let j = a; j < z; j += 4) { const v = Math.abs(d[j]); if (v > m) m = v; } out.push(m); }
+    return out.map((v, i) => (v + (out[i - 1] ?? v) + (out[i + 1] ?? v)) / 3);
+  }
+  function drawChart() {
+    const cv = $("chart"); if (!cv || !S.orig || !S.result || $("score").hidden) return;
+    const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight; if (!W) return;
+    cv.width = W * dpr; cv.height = H * dpr;
+    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+    const css = getComputedStyle(root), lav = css.getPropertyValue("--lav").trim(), red = css.getPropertyValue("--red").trim(), line = css.getPropertyValue("--surface-2").trim();
+    g.strokeStyle = line; g.lineWidth = 1; g.setLineDash([3, 4]);
+    for (let k = 1; k < 4; k++) { const x = (W / 4) * k; g.beginPath(); g.moveTo(x, 6); g.lineTo(x, H - 6); g.stroke(); }
+    g.setLineDash([]);
+    const N = 40;
+    const draw = (vals, color, fill) => {
+      const pts = vals.map((v, i) => [6 + (i / (N - 1)) * (W - 12), H - 8 - v * (H - 20)]);
+      g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; g.quadraticCurveTo(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2); }
+      g.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
+      if (fill) {
+        const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, color + "33"); gr.addColorStop(1, color + "00");
+        g.save(); g.lineTo(W - 6, H); g.lineTo(6, H); g.closePath(); g.fillStyle = gr; g.fill(); g.restore();
+        g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; g.quadraticCurveTo(x0, y0, (x0 + x1) / 2, (y0 + y1) / 2); }
+      }
+      g.strokeStyle = color; g.lineWidth = 2.5; g.lineJoin = "round"; g.stroke();
+    };
+    draw(envelope(S.orig, N), lav, false);
+    draw(envelope(S.result, N), red, true);
+  }
+  window.addEventListener("resize", () => { if (S.step === 4 && S.mode === "solo") drawChart(); });
   function readBest() { return Number(store.get("cac-best") || 0); }
   function saveBest(n) {
     const b = readBest();
-    if (n > b) { store.set("cac-best", String(n)); $("best").textContent = b ? "🏆 " + t("newBest") : ""; }
-    else $("best").textContent = t("best", { n: b });
+    if (n > b) { store.set("cac-best", String(n)); if (b) setTimeout(() => toast(t("newBest")), 900); }
+    $("best").textContent = String(Math.max(n, b));
   }
 
   /* ---------- vídeo para partilhar ---------- */
@@ -754,7 +851,7 @@
     $("share-status").textContent = t("making", { p: 0 });
     try { if (document.fonts && document.fonts.ready) await document.fonts.ready; } catch (e) {}
     const c = audio();
-    const segs = [["orig", t("vOrig"), "#FF5B2E", "#170A05"], ["origrev", t("vRev"), "#2E2BF5", "#FFFFFF"], ["result", t("vResult"), "#FFE14A", "#170A05"]].filter((s) => S[s[0]]);
+    const segs = [["orig", t("vOrig"), "#E3134A", "#FFFFFF"], ["origrev", t("vRev"), "#6A5AE8", "#FFFFFF"], ["result", t("vResult"), "#121216", "#FFFFFF"]].filter((s) => S[s[0]]);
     const dest = c.createMediaStreamDestination();
     const an = c.createAnalyser(); an.fftSize = 256; an.smoothingTimeConstant = 0.7;
     const fr = new Uint8Array(an.frequencyBinCount);
@@ -790,13 +887,13 @@
       const seg = timeline[i], inSeg = now >= seg.start && now <= seg.end;
       g.fillStyle = seg.bg; g.fillRect(0, 0, W, H);
       g.fillStyle = seg.fg; g.textBaseline = "alphabetic"; g.textAlign = "left";
-      g.globalAlpha = 0.7; g.font = '600 30px "Funnel Sans", system-ui, sans-serif';
+      g.globalAlpha = 0.7; g.font = '600 30px "Poppins", system-ui, sans-serif';
       g.fillText(t("docTitle").toUpperCase(), 60, 110);
       g.globalAlpha = 1;
-      g.font = '800 92px "Funnel Display", system-ui, sans-serif';
+      g.font = '600 84px "Poppins", system-ui, sans-serif';
       wrapText(g, seg.label, W - 120).forEach((ln, k) => g.fillText(ln, 60, 250 + k * 92));
       if (phraseFwd) {
-        g.globalAlpha = 0.75; g.font = '600 40px "Funnel Sans", system-ui, sans-serif';
+        g.globalAlpha = 0.75; g.font = '500 40px "Poppins", system-ui, sans-serif';
         const txt = seg.key === "orig" ? "“" + phraseFwd + "”" : "“" + reverseText(phraseFwd) + "”";
         wrapText(g, txt, W - 120).slice(0, 3).forEach((ln, k) => g.fillText(ln, 60, 470 + k * 52));
         g.globalAlpha = 1;
@@ -804,7 +901,7 @@
       // visualizador
       an.getByteFrequencyData(fr);
       const cx = W / 2, cy = 820, r0 = 150;
-      g.beginPath(); g.arc(cx, cy, r0, 0, Math.PI * 2); g.fillStyle = seg.fg === "#FFFFFF" ? "#FFFFFF" : "#170A05"; g.fill();
+      g.beginPath(); g.arc(cx, cy, r0, 0, Math.PI * 2); g.fillStyle = "rgba(255,255,255,.14)"; g.fill();
       g.strokeStyle = seg.fg; g.lineCap = "round"; g.lineWidth = 9;
       const N = 60;
       for (let k = 0; k < N; k++) {
@@ -825,10 +922,10 @@
       });
       g.globalAlpha = 1;
       if (S.mode === "solo" && S.score != null && i === timeline.length - 1) {
-        g.textAlign = "right"; g.font = '800 64px "Funnel Display", system-ui, sans-serif';
+        g.textAlign = "right"; g.font = '600 64px "Poppins", system-ui, sans-serif';
         g.fillText(t("ptsN", { n: S.score }), W - 60, 1070); g.textAlign = "left";
       }
-      g.globalAlpha = 0.6; g.textAlign = "center"; g.font = '600 28px "Funnel Sans", system-ui, sans-serif';
+      g.globalAlpha = 0.6; g.textAlign = "center"; g.font = '500 28px "Poppins", system-ui, sans-serif';
       g.fillText(SITE, W / 2, 1215); g.globalAlpha = 1; g.textAlign = "left";
       const pct = Math.min(99, Math.round(((now - tBegin) / (tEnd - tBegin)) * 100));
       $("share-status").textContent = t("making", { p: Math.max(0, pct) });

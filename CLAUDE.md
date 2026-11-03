@@ -14,7 +14,7 @@ Jogo de festa para telemóvel: grava-se uma frase, ouve-se ao contrário, imita-
   Qualquer texto novo tem de existir nas 7.
 - `js/score.js`: pontuação (bandas mel + DTW), `window.CAC_similarity`.
 - `sw.js`: modo sem internet. **Aumenta `VERSION` sempre que publicares.**
-- `fonts/`: Rubik (letra da interface) e Funnel Display/Sans (só no vídeo partilhado), alojadas localmente (OFL).
+- `fonts/`: Poppins alojada localmente (OFL).
 - `icons/`, `manifest.webmanifest`, `privacy.html` (7 línguas).
 - `app/`: projeto Capacitor (Android e iOS). `npm run sync` copia o site para `app/www`.
 - `store/`: textos da loja, capturas (geradas com Playwright), vídeos de demonstração, imagem de destaque.
@@ -24,22 +24,23 @@ Jogo de festa para telemóvel: grava-se uma frase, ouve-se ao contrário, imita-
 - Sozinho: 1 gravar → 2 ouvir ao contrário → 3 imitar → 4 nota (0–100) + partilhar.
 - Adivinha (2–8 jogadores, 1–3 rondas cada): 1 grava em segredo → 2 passa o telemóvel → 3 ouve ao contrário →
   4 imita → 5 "O que era?" → 6 revelar (rufar de tambores) → Acertou/Falhou → … → 7 vencedor.
-- Jogadores com avatar de bicho (emoji), guardados em `localStorage` `cac-roster`.
+- Jogadores (nome e foto opcional) guardados em `localStorage` `cac-roster`.
 
 ## Sistema de design (não quebrar)
 
-- 60/30/10: fundo neutro `--bg` e cartões `--card` (claro e escuro automáticos), tinta `--ink`,
-  e a cor da fase (`--phase`) só no botão central, no brilho por trás e no anel de som.
-  Fases em `:root[data-phase]`: `rec` laranja, `listen` azul, `result` tinta, `dark` verde.
-- Uma família (Rubik), 4 tamanhos (`--fs-cap`, `--fs-body`, `--fs-title`, `--fs-display`) relativos ao
-  tamanho de letra do sistema (Dynamic Type), 2 pesos (600 e 800). Grelha de 8 pontos.
-- Texto branco só sobre `--brand-btn`, `--ok-btn` ou `--rev` (contraste ≥ 4,5:1); texto laranja usa `--brand-text`.
-- Um botão principal (`.btn.primary`) por ecrã, em baixo, na zona do polegar (`#cta`).
-- Alvos de toque ≥ 44 pontos; alturas com `min-height` para crescerem com a letra.
+Inspirado em apps como as que o dono mostrou (corrida com vermelho+lavanda, rankings com pódio).
+- Fundo branco `--bg`, superfícies cinzento-claro `--surface`, tinta `--ink`/`--ink-2`; modo escuro automático.
+- Vermelho `--red` (#E3134A) para gravar e ações principais; lavanda `--lav` (#6A5AE8) para o som ao contrário
+  e destaques; cartão de destaque com `--hero-grad` (gradiente lavanda) e louros brancos.
+- Poppins, pesos 500 e 600, 4 tamanhos (`--fs-cap`, `--fs-body`, `--fs-title`, `--fs-display`) relativos à letra do sistema.
+- Botões lisos (sem 3D): `.btn.primary` vermelho, `.btn.neutral` cinzento; chips com contorno, escolhido a cheio.
+- **Sem emojis.** Jogadores com foto (selfie, guardada só no telemóvel) ou iniciais em cores suaves (`AV_COLORS`).
+- Fim do modo Adivinha: pódio 2-1-3 e tabela Posição/Jogador/Pontos. Resultado Sozinho: estatísticas + gráfico.
+- Um botão principal por ecrã, em baixo (`#cta`). Alvos de toque ≥ 44 pontos. Contraste de texto ≥ 4,5:1.
 
 ## Estado atual
 
-Redesenho feito com as skills `mobile-app-ui-design` e `ios-review`. Da revisão iOS ficaram por fazer
+Redesenho (3.ª versão) feito com as skills `mobile-app-ui-design` e `ios-review` e as referências do dono. Da revisão iOS ficaram por fazer
 (o dono escolheu só contraste e letra): confirmar antes de sair de uma partida, chips e seletor de rondas
 com 44 pontos, "Cancelar"/"Agora não" nas folhas de língua e do microfone, mensagem curta para
 microfone recusado (diferente na app e no site), nomes com maiúscula automática e sem corretor.

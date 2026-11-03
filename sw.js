@@ -1,10 +1,9 @@
 /* Guarda o jogo no telemóvel para funcionar sem internet. Muda VERSION a cada publicação. */
-const VERSION = "cac-v11";
+const VERSION = "cac-v12";
 const SHELL = [
   "./", "index.html", "privacy.html", "manifest.webmanifest",
   "js/i18n.js", "js/score.js", "js/app.js",
-  "fonts/fonts.css", "fonts/rubik.css", "fonts/rubik-latin.woff2", "fonts/rubik-latin-ext.woff2", "fonts/funnel-display-latin.woff2", "fonts/funnel-display-latin-ext.woff2",
-  "fonts/funnel-sans-latin.woff2", "fonts/funnel-sans-latin-ext.woff2",
+  "fonts/poppins.css", "fonts/poppins-400-latin.woff2", "fonts/poppins-400-latin-ext.woff2", "fonts/poppins-500-latin.woff2", "fonts/poppins-500-latin-ext.woff2", "fonts/poppins-600-latin.woff2", "fonts/poppins-600-latin-ext.woff2", "fonts/poppins-700-latin.woff2", "fonts/poppins-700-latin-ext.woff2",
   "icons/icon-192.png", "icons/icon-512.png", "icons/maskable-512.png", "icons/apple-touch-icon.png", "icons/favicon-48.png",
 ];
 self.addEventListener("install", (e) => {
