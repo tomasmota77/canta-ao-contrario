@@ -1,5 +1,5 @@
 /* Guarda o jogo no telemóvel para funcionar sem internet. Muda VERSION a cada publicação. */
-const VERSION = "cac-v10";
+const VERSION = "cac-v11";
 const SHELL = [
   "./", "index.html", "privacy.html", "manifest.webmanifest",
   "js/i18n.js", "js/score.js", "js/app.js",
